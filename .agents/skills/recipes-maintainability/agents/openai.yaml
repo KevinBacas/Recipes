@@ -1,0 +1,4 @@
+interface:
+  display_name: "Recipes — Maintenabilité"
+  short_description: "Faire évoluer Recipes avec un code lisible et cohérent"
+  default_prompt: "Utilise $recipes-maintainability pour faire évoluer Recipes en préservant ses contrats et sa lisibilité."

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Recipes — Documentation"
+  short_description: "Synchroniser la documentation avec le code de Recipes"
+  default_prompt: "Utilise $recipes-docs-sync pour vérifier et actualiser la documentation après les changements de Recipes."

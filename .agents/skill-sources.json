@@ -1,0 +1,48 @@
+{
+  "formatVersion": 1,
+  "bundle": 2,
+  "installedAt": "2026-10-07",
+  "hashAlgorithm": "sha256 over sorted relative POSIX paths, each followed by NUL and file bytes followed by NUL",
+  "upstreamSkills": [
+    {
+      "name": "vercel-react-best-practices",
+      "repository": "https://github.com/vercel-labs/agent-skills",
+      "commit": "063bee94c3f4df8453406c830b0a7df0f2860278",
+      "path": "skills/react-best-practices",
+      "license": "MIT (declared in upstream skill)",
+      "fileCount": 76,
+      "treeSha256": "e3f2294574b469c7c198373a443a86571012769d0bbeed68854bd55642ec0d7b"
+    },
+    {
+      "name": "vercel-composition-patterns",
+      "repository": "https://github.com/vercel-labs/agent-skills",
+      "commit": "063bee94c3f4df8453406c830b0a7df0f2860278",
+      "path": "skills/composition-patterns",
+      "license": "MIT (declared in upstream skill)",
+      "fileCount": 14,
+      "treeSha256": "646f870906914c3787efa7403ec4716dfddf78fc17a12ec1f0556caf2143ac66"
+    },
+    {
+      "name": "supabase",
+      "repository": "https://github.com/supabase/agent-skills",
+      "commit": "c9be0e931b7930f7d02126d04774d904c381e7d7",
+      "path": "skills/supabase",
+      "license": "MIT (declared in upstream skill)",
+      "fileCount": 4,
+      "treeSha256": "2c7889f630230dbba314657b84e88a4550418127f36aaddadd8a4fad3f78d81f"
+    },
+    {
+      "name": "supabase-postgres-best-practices",
+      "repository": "https://github.com/supabase/agent-skills",
+      "commit": "c9be0e931b7930f7d02126d04774d904c381e7d7",
+      "path": "skills/supabase-postgres-best-practices",
+      "license": "MIT (declared in upstream skill)",
+      "fileCount": 36,
+      "treeSha256": "a714d433362542f2d52e8b7958d1691c49fa4f43c9645c9a647895fb3ca85f92"
+    }
+  ],
+  "localSkills": [
+    "recipes-maintainability",
+    "recipes-docs-sync"
+  ]
+}

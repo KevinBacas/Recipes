@@ -1,0 +1,8 @@
+# Preserve the exact upstream Markdown, including intentional hard line breaks.
+.agents/skills/vercel-react-best-practices/** whitespace=-blank-at-eol,-blank-at-eof
+.agents/skills/vercel-composition-patterns/** whitespace=-blank-at-eol,-blank-at-eof
+.agents/skills/supabase/** whitespace=-blank-at-eol,-blank-at-eof
+.agents/skills/supabase-postgres-best-practices/** whitespace=-blank-at-eol,-blank-at-eof
+
+# Preserve the Supabase generator output, which ends with an extra blank line.
+src/lib/supabase/database.types.ts whitespace=-blank-at-eof
