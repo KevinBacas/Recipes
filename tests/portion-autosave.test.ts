@@ -10,7 +10,9 @@ describe("enregistrement automatique des portions", () => {
     vi.useFakeTimers();
     const save = vi.fn(async () => success);
     const draft = new PortionAutosave(2, save);
-    draft.setValue("1"); draft.setValue("12"); draft.setValue("120");
+    draft.setValue("1");
+    draft.setValue("12");
+    draft.setValue("120");
     expect(save).not.toHaveBeenCalled();
     await vi.advanceTimersByTimeAsync(350);
     expect(save).toHaveBeenCalledExactlyOnceWith(120);
@@ -27,25 +29,46 @@ describe("enregistrement automatique des portions", () => {
 
   it("ordonne les requêtes et conserve une saisie faite pendant une sauvegarde", async () => {
     let finish!: (result: ActionResult) => void;
-    const save = vi.fn().mockImplementationOnce(() => new Promise<ActionResult>(resolve => { finish = resolve; })).mockResolvedValue(success);
+    const save = vi
+      .fn()
+      .mockImplementationOnce(
+        () =>
+          new Promise<ActionResult>((resolve) => {
+            finish = resolve;
+          }),
+      )
+      .mockResolvedValue(success);
     const draft = new PortionAutosave(2, save);
-    draft.setValue("3"); const saving = draft.flush();
-    draft.setValue("10"); draft.reconcile(3);
+    draft.setValue("3");
+    const saving = draft.flush();
+    draft.setValue("10");
+    draft.reconcile(3);
     expect(draft.getSnapshot().value).toBe("10");
     expect(save).toHaveBeenCalledTimes(1);
     finish(success);
     expect(await saving).toBe(true);
-    expect(save.mock.calls.map(call => call[0])).toEqual([3, 10]);
+    expect(save.mock.calls.map((call) => call[0])).toEqual([3, 10]);
     expect(draft.getSnapshot()).toMatchObject({ value: "10", status: "saved" });
   });
 
   it("enregistre le retour à la valeur initiale après une requête déjà partie", async () => {
     let finish!: (result: ActionResult) => void;
-    const save = vi.fn().mockImplementationOnce(() => new Promise<ActionResult>(resolve => { finish = resolve; })).mockResolvedValue(success);
+    const save = vi
+      .fn()
+      .mockImplementationOnce(
+        () =>
+          new Promise<ActionResult>((resolve) => {
+            finish = resolve;
+          }),
+      )
+      .mockResolvedValue(success);
     const draft = new PortionAutosave(2, save);
-    draft.setValue("3"); const saving = draft.flush();
-    draft.setValue("2"); finish(success); await saving;
-    expect(save.mock.calls.map(call => call[0])).toEqual([3, 2]);
+    draft.setValue("3");
+    const saving = draft.flush();
+    draft.setValue("2");
+    finish(success);
+    await saving;
+    expect(save.mock.calls.map((call) => call[0])).toEqual([3, 2]);
   });
 
   it("bloque les valeurs vides, fractionnelles et hors limites", async () => {
@@ -75,7 +98,8 @@ describe("enregistrement automatique des portions", () => {
     const draft = new PortionAutosave(2, async () => success);
     draft.reconcile(5);
     expect(draft.getSnapshot().value).toBe("5");
-    draft.setValue("6"); draft.reconcile(8);
+    draft.setValue("6");
+    draft.reconcile(8);
     expect(draft.getSnapshot().value).toBe("6");
     await draft.flush();
   });
@@ -88,17 +112,20 @@ describe("enregistrement automatique des portions", () => {
       return success;
     });
     const draft = new PortionAutosave(2, save);
-    draft.setValue("4"); expect(await draft.flush()).toBe(false);
+    draft.setValue("4");
+    expect(await draft.flush()).toBe(false);
     expect(stored).toBe(4);
-    draft.setValue("2"); expect(await draft.flush()).toBe(true);
+    draft.setValue("2");
+    expect(await draft.flush()).toBe(true);
     expect(stored).toBe(2);
-    expect(save.mock.calls.map(call => call[0])).toEqual([4, 2]);
+    expect(save.mock.calls.map((call) => call[0])).toEqual([4, 2]);
   });
 
   it("enregistre une modification faite juste avant de quitter l’écran", async () => {
     const save = vi.fn(async () => success);
     const draft = new PortionAutosave(2, save);
-    draft.setValue("7"); draft.leave();
+    draft.setValue("7");
+    draft.leave();
     await vi.waitFor(() => expect(draft.getSnapshot().status).toBe("saved"));
     expect(save).toHaveBeenCalledExactlyOnceWith(7);
   });

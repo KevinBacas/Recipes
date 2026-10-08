@@ -2,7 +2,10 @@ import type { Database } from "./database.types";
 
 // Postgres accepts NULL for these RPC arguments. Generated types cannot infer that.
 type Functions = Database["public"]["Functions"];
-type NullableArgs<K extends keyof Functions, P extends keyof Functions[K]["Args"]> = Omit<Functions[K], "Args"> & {
+type NullableArgs<K extends keyof Functions, P extends keyof Functions[K]["Args"]> = Omit<
+  Functions[K],
+  "Args"
+> & {
   Args: Omit<Functions[K]["Args"], P> & { [Key in P]: Functions[K]["Args"][Key] | null };
 };
 export type AppDatabase = Omit<Database, "public"> & {

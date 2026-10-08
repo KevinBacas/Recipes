@@ -4,18 +4,18 @@
 
 ## Responsabilités
 
-| Emplacement | Responsabilité |
-| --- | --- |
-| `src/app/(private)/` | Pages protégées, chargement serveur, layout commun et états de chargement/erreur |
-| `src/app/actions.ts` | Connexion, mutations validées avec Zod, RPC, gestion des photos et revalidation |
-| `src/components/` | Présentation et interactions, sans écriture directe des tables Supabase |
-| `src/lib/domain.ts` | Contrats métier, unités, validation, agrégation et affichage des quantités |
-| `src/lib/portion-autosave.ts` | File de sauvegarde des portions, indépendante de React |
-| `src/lib/data.ts` | Lectures authentifiées et URLs temporaires des photos |
-| `src/lib/use-realtime-refresh.ts` | Canal Realtime, reconnexion, nettoyage et rafraîchissement des lectures |
-| `src/lib/supabase/` | Clients SSR/navigateur, configuration, types générés et adaptation des RPC |
-| `src/proxy.ts` | Rafraîchissement de la session et propagation des cookies |
-| `supabase/migrations/` | Schéma, droits, transactions et publication Realtime |
+| Emplacement                       | Responsabilité                                                                   |
+| --------------------------------- | -------------------------------------------------------------------------------- |
+| `src/app/(private)/`              | Pages protégées, chargement serveur, layout commun et états de chargement/erreur |
+| `src/app/actions.ts`              | Connexion, mutations validées avec Zod, RPC, gestion des photos et revalidation  |
+| `src/components/`                 | Présentation et interactions, sans écriture directe des tables Supabase          |
+| `src/lib/domain.ts`               | Contrats métier, unités, validation, agrégation et affichage des quantités       |
+| `src/lib/portion-autosave.ts`     | File de sauvegarde des portions, indépendante de React                           |
+| `src/lib/data.ts`                 | Lectures authentifiées et URLs temporaires des photos                            |
+| `src/lib/use-realtime-refresh.ts` | Canal Realtime, reconnexion, nettoyage et rafraîchissement des lectures          |
+| `src/lib/supabase/`               | Clients SSR/navigateur, configuration, types générés et adaptation des RPC       |
+| `src/proxy.ts`                    | Rafraîchissement de la session et propagation des cookies                        |
+| `supabase/migrations/`            | Schéma, droits, transactions et publication Realtime                             |
 
 ## Lecture et mutation
 

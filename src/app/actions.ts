@@ -21,7 +21,12 @@ function errorDetails(error: unknown) {
   const details = error as { message?: unknown; code?: unknown; name?: unknown };
   return {
     message: typeof details.message === "string" ? details.message : "",
-    code: typeof details.code === "string" ? details.code : typeof details.name === "string" ? details.name : "UNKNOWN",
+    code:
+      typeof details.code === "string"
+        ? details.code
+        : typeof details.name === "string"
+          ? details.name
+          : "UNKNOWN",
   };
 }
 
@@ -33,10 +38,23 @@ function failure(error: unknown, operation: string): ActionResult<never> {
   const { message, code } = errorDetails(error);
   console.error(`[recipes] Échec de ${operation}`, { code });
 
-  if (message.includes("PLAN_CHANGED")) return { ok: false, error: "Les plats ont changé sur un autre appareil. Actualisez la page puis réessayez." };
-  if (message.includes("LIST_CHANGED")) return { ok: false, error: "La liste a changé sur un autre appareil. Actualisez la page avant de continuer." };
-  if (message.includes("RECIPE_CHANGED")) return { ok: false, error: "Cette recette a été modifiée sur un autre appareil. Rechargez-la avant de continuer." };
-  if (message.includes("NOT_FOUND")) return { ok: false, error: "Cet élément n’est plus disponible. Actualisez la page." };
+  if (message.includes("PLAN_CHANGED"))
+    return {
+      ok: false,
+      error: "Les plats ont changé sur un autre appareil. Actualisez la page puis réessayez.",
+    };
+  if (message.includes("LIST_CHANGED"))
+    return {
+      ok: false,
+      error: "La liste a changé sur un autre appareil. Actualisez la page avant de continuer.",
+    };
+  if (message.includes("RECIPE_CHANGED"))
+    return {
+      ok: false,
+      error: "Cette recette a été modifiée sur un autre appareil. Rechargez-la avant de continuer.",
+    };
+  if (message.includes("NOT_FOUND"))
+    return { ok: false, error: "Cet élément n’est plus disponible. Actualisez la page." };
   return { ok: false, error: "L’enregistrement a échoué. Vérifiez votre connexion et réessayez." };
 }
 
@@ -61,7 +79,10 @@ async function removeRecipePhoto(
 ) {
   try {
     const { error } = await client.storage.from("recipe-photos").remove([path]);
-    if (error) console.error(`[recipes] Nettoyage de photo impossible après ${operation}`, { code: error.name });
+    if (error)
+      console.error(`[recipes] Nettoyage de photo impossible après ${operation}`, {
+        code: error.name,
+      });
   } catch {
     console.error(`[recipes] Nettoyage de photo impossible après ${operation}`);
   }
@@ -70,16 +91,25 @@ async function removeRecipePhoto(
 export async function signIn(form: FormData): Promise<ActionResult> {
   if (!isConfigured()) return { ok: false, error: "Votre espace n’est pas encore configuré." };
 
-  const parsed = z.object({ email: z.email(), password: z.string().min(1) })
+  const parsed = z
+    .object({ email: z.email(), password: z.string().min(1) })
     .safeParse({ email: form.get("email"), password: form.get("password") });
-  if (!parsed.success) return { ok: false, error: "Renseignez une adresse email et votre mot de passe." };
+  if (!parsed.success)
+    return { ok: false, error: "Renseignez une adresse email et votre mot de passe." };
 
   try {
     const client = await createClient();
     const { error } = await client.auth.signInWithPassword(parsed.data);
-    if (error) return { ok: false, error: "Connexion impossible. Vérifiez votre email et votre mot de passe." };
+    if (error)
+      return {
+        ok: false,
+        error: "Connexion impossible. Vérifiez votre email et votre mot de passe.",
+      };
   } catch {
-    return { ok: false, error: "Connexion impossible pour le moment. Réessayez dans quelques instants." };
+    return {
+      ok: false,
+      error: "Connexion impossible pour le moment. Réessayez dans quelques instants.",
+    };
   }
 
   redirect("/recettes");
@@ -96,9 +126,14 @@ export async function signOut(): Promise<ActionResult> {
 }
 
 function imageMime(bytes: Uint8Array): { mime: string; extension: string } | null {
-  if (bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) return { mime: "image/jpeg", extension: "jpg" };
-  if ([137, 80, 78, 71, 13, 10, 26, 10].every((byte, index) => bytes[index] === byte)) return { mime: "image/png", extension: "png" };
-  if (new TextDecoder().decode(bytes.slice(0, 4)) === "RIFF" && new TextDecoder().decode(bytes.slice(8, 12)) === "WEBP") {
+  if (bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff)
+    return { mime: "image/jpeg", extension: "jpg" };
+  if ([137, 80, 78, 71, 13, 10, 26, 10].every((byte, index) => bytes[index] === byte))
+    return { mime: "image/png", extension: "png" };
+  if (
+    new TextDecoder().decode(bytes.slice(0, 4)) === "RIFF" &&
+    new TextDecoder().decode(bytes.slice(8, 12)) === "WEBP"
+  ) {
     return { mime: "image/webp", extension: "webp" };
   }
   return null;
@@ -113,7 +148,11 @@ export async function saveRecipe(form: FormData): Promise<ActionResult<{ id: str
   }
 
   const parsed = recipeSchema.safeParse(payload);
-  if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? "Vérifiez les informations de la recette." };
+  if (!parsed.success)
+    return {
+      ok: false,
+      error: parsed.error.issues[0]?.message ?? "Vérifiez les informations de la recette.",
+    };
   if (parsed.data.id && parsed.data.revision === undefined) {
     return { ok: false, error: "Rechargez cette recette avant de l’enregistrer." };
   }
@@ -124,7 +163,8 @@ export async function saveRecipe(form: FormData): Promise<ActionResult<{ id: str
   try {
     const photo = form.get("photo");
     if (photo instanceof File && photo.size > 0) {
-      if (photo.size > 5 * 1024 * 1024) return { ok: false, error: "La photo doit faire moins de 5 Mo." };
+      if (photo.size > 5 * 1024 * 1024)
+        return { ok: false, error: "La photo doit faire moins de 5 Mo." };
 
       const bytes = new Uint8Array(await photo.arrayBuffer());
       const detected = imageMime(bytes);
@@ -138,7 +178,11 @@ export async function saveRecipe(form: FormData): Promise<ActionResult<{ id: str
       if (error) return failure(error, "l’envoi de la photo");
     }
 
-    const photoAction = uploadedPath ? "replace" : form.get("removePhoto") === "true" ? "remove" : "keep";
+    const photoAction = uploadedPath
+      ? "replace"
+      : form.get("removePhoto") === "true"
+        ? "remove"
+        : "keep";
     const { data, error } = await client.rpc("save_recipe", {
       p_id: parsed.data.id ?? null,
       p_expected_revision: parsed.data.revision ?? null,
@@ -161,7 +205,10 @@ export async function saveRecipe(form: FormData): Promise<ActionResult<{ id: str
     const saved = saveRecipeResultSchema.safeParse(data);
     if (!saved.success) {
       console.error("[recipes] Résultat inattendu de save_recipe");
-      return { ok: false, error: "La recette a peut-être été enregistrée. Rechargez le carnet avant de réessayer." };
+      return {
+        ok: false,
+        error: "La recette a peut-être été enregistrée. Rechargez le carnet avant de réessayer.",
+      };
     }
 
     const previousPath = saved.data.previous_photo_path;
@@ -187,11 +234,15 @@ export async function deleteRecipe(id: string): Promise<ActionResult> {
     const deleted = deleteRecipeResultSchema.safeParse(data);
     if (!deleted.success) {
       console.error("[recipes] Résultat inattendu de delete_recipe");
-      return { ok: false, error: "La recette a peut-être été supprimée. Rechargez le carnet avant de réessayer." };
+      return {
+        ok: false,
+        error: "La recette a peut-être été supprimée. Rechargez le carnet avant de réessayer.",
+      };
     }
 
     const photoPath = deleted.data.photo_path;
-    if (photoPath?.startsWith(`${ownerId}/`)) await removeRecipePhoto(client, photoPath, "suppression de recette");
+    if (photoPath?.startsWith(`${ownerId}/`))
+      await removeRecipePhoto(client, photoPath, "suppression de recette");
     refreshAfterMutation("la suppression de la recette");
     return { ok: true, data: undefined };
   } catch (error) {
@@ -249,9 +300,13 @@ export async function generateList(expectedListId: string | null): Promise<Actio
     const parsed = preparationSchema.safeParse(data);
     if (!parsed.success) {
       console.error("[recipes] Réponse inattendue de get_preparation");
-      return { ok: false, error: "Les plats n’ont pas pu être vérifiés. Actualisez la page puis réessayez." };
+      return {
+        ok: false,
+        error: "Les plats n’ont pas pu être vérifiés. Actualisez la page puis réessayez.",
+      };
     }
-    if (!parsed.data.selections.length) return { ok: false, error: "Ajoutez au moins un plat avant de générer les courses." };
+    if (!parsed.data.selections.length)
+      return { ok: false, error: "Ajoutez au moins un plat avant de générer les courses." };
 
     const items = aggregateShopping(parsed.data.selections);
     const { error } = await client.rpc("replace_shopping_list", {
@@ -269,7 +324,9 @@ export async function generateList(expectedListId: string | null): Promise<Actio
 }
 
 export async function setChecked(input: unknown): Promise<ActionResult> {
-  const parsed = z.object({ id: z.uuid(), listId: z.uuid(), checked: z.boolean() }).safeParse(input);
+  const parsed = z
+    .object({ id: z.uuid(), listId: z.uuid(), checked: z.boolean() })
+    .safeParse(input);
   if (!parsed.success) return { ok: false, error: "Article introuvable." };
 
   const { client } = await authenticatedClient();

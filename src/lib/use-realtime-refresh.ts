@@ -14,7 +14,7 @@ export function useRealtimeRefresh(ownerId: string, tables: string[]) {
 
   const reconnect = useCallback(() => {
     setStatus("connecting");
-    setConnectionAttempt(attempt => attempt + 1);
+    setConnectionAttempt((attempt) => attempt + 1);
     router.refresh();
   }, [router]);
 
@@ -27,12 +27,18 @@ export function useRealtimeRefresh(ownerId: string, tables: string[]) {
       clearTimeout(timeout);
       timeout = setTimeout(() => router.refresh(), 120);
     };
-    const channel = client.channel(`workspace:${ownerId}:${connectionAttempt}:${crypto.randomUUID()}`);
+    const channel = client.channel(
+      `workspace:${ownerId}:${connectionAttempt}:${crypto.randomUUID()}`,
+    );
 
     // Workspace revisions also signal removals without subscribing to private DELETE rows.
-    tableKey.split(",").forEach(table => {
+    tableKey.split(",").forEach((table) => {
       for (const event of ["INSERT", "UPDATE"] as const) {
-        channel.on("postgres_changes", { event, schema: "public", table, filter: `owner_id=eq.${ownerId}` }, refresh);
+        channel.on(
+          "postgres_changes",
+          { event, schema: "public", table, filter: `owner_id=eq.${ownerId}` },
+          refresh,
+        );
       }
     });
 
@@ -47,7 +53,7 @@ export function useRealtimeRefresh(ownerId: string, tables: string[]) {
         }
         await client.realtime.setAuth(data.session.access_token);
         if (disposed) return;
-        channel.subscribe(state => {
+        channel.subscribe((state) => {
           if (disposed) return;
           if (state === "SUBSCRIBED") {
             setStatus("connected");
@@ -63,7 +69,7 @@ export function useRealtimeRefresh(ownerId: string, tables: string[]) {
 
     const online = () => {
       setStatus("connecting");
-      setConnectionAttempt(attempt => attempt + 1);
+      setConnectionAttempt((attempt) => attempt + 1);
       refresh();
     };
     const offline = () => setStatus("offline");

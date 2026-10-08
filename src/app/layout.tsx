@@ -8,5 +8,14 @@ export const metadata: Metadata = {
 };
 export const viewport: Viewport = { width: "device-width", initialScale: 1, themeColor: "#fbfaf8" };
 export default function RootLayout({ children }: { children: React.ReactNode }) {
-  return <html lang="fr"><body><a href="#main" className="skip-link">Aller au contenu</a>{children}</body></html>;
+  return (
+    <html lang="fr">
+      <body>
+        <a href="#main" className="skip-link">
+          Aller au contenu
+        </a>
+        {children}
+      </body>
+    </html>
+  );
 }

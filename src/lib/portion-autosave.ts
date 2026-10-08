@@ -9,7 +9,12 @@ export type PortionSnapshot = {
 
 function parseServings(value: string): number | null {
   const number = Number(value);
-  return value.trim() && Number.isInteger(number) && number >= SERVINGS_MIN && number <= SERVINGS_MAX ? number : null;
+  return value.trim() &&
+    Number.isInteger(number) &&
+    number >= SERVINGS_MIN &&
+    number <= SERVINGS_MAX
+    ? number
+    : null;
 }
 
 /** One ordered save queue per dish, shared by typing, blur and list generation. */
@@ -21,7 +26,11 @@ export class PortionAutosave {
   private request: Promise<boolean> | undefined;
   private needsConfirmation = false;
 
-  constructor(servings: number, private save: Save, private delay = 350) {
+  constructor(
+    servings: number,
+    private save: Save,
+    private delay = 350,
+  ) {
     this.confirmed = servings;
     this.snapshot = { value: String(servings), status: "saved", error: "" };
   }
@@ -29,12 +38,14 @@ export class PortionAutosave {
   getSnapshot = () => this.snapshot;
   subscribe = (listener: () => void) => {
     this.listeners.add(listener);
-    return () => { this.listeners.delete(listener); };
+    return () => {
+      this.listeners.delete(listener);
+    };
   };
 
   private publish(snapshot: PortionSnapshot) {
     this.snapshot = snapshot;
-    this.listeners.forEach(listener => listener());
+    this.listeners.forEach((listener) => listener());
   }
 
   setValue(value: string) {
@@ -46,7 +57,9 @@ export class PortionAutosave {
       this.publish({ value, status: "saved", error: "" });
     } else {
       this.publish({ value, status: this.request ? "saving" : "waiting", error: "" });
-      this.timer = setTimeout(() => { void this.flush(); }, this.delay);
+      this.timer = setTimeout(() => {
+        void this.flush();
+      }, this.delay);
     }
   }
 
@@ -62,8 +75,11 @@ export class PortionAutosave {
     if (this.request) return this.request;
     if (parseServings(this.snapshot.value) === null) return false;
     this.request = this.drain();
-    try { return await this.request; }
-    finally { this.request = undefined; }
+    try {
+      return await this.request;
+    } finally {
+      this.request = undefined;
+    }
   }
 
   private async drain(): Promise<boolean> {
@@ -77,10 +93,19 @@ export class PortionAutosave {
       }
       this.publish({ value, status: "saving", error: "" });
       let result: ActionResult;
-      try { result = await this.save(servings); }
-      catch { result = { ok: false, error: "Les portions n’ont pas été enregistrées. Vérifiez votre connexion puis réessayez." }; }
-      if (result.ok) { this.confirmed = servings; this.needsConfirmation = false; }
-      else this.needsConfirmation = true;
+      try {
+        result = await this.save(servings);
+      } catch {
+        result = {
+          ok: false,
+          error:
+            "Les portions n’ont pas été enregistrées. Vérifiez votre connexion puis réessayez.",
+        };
+      }
+      if (result.ok) {
+        this.confirmed = servings;
+        this.needsConfirmation = false;
+      } else this.needsConfirmation = true;
       if (!result.ok && this.snapshot.value === value) {
         this.publish({ value, status: "error", error: result.error });
         return false;
@@ -92,7 +117,13 @@ export class PortionAutosave {
 
   discard() {
     clearTimeout(this.timer);
-    this.publish({ value: String(this.confirmed), status: this.needsConfirmation ? "error" : "saved", error: this.needsConfirmation ? "Les portions n’ont pas été confirmées. Réessayez l’enregistrement." : "" });
+    this.publish({
+      value: String(this.confirmed),
+      status: this.needsConfirmation ? "error" : "saved",
+      error: this.needsConfirmation
+        ? "Les portions n’ont pas été confirmées. Réessayez l’enregistrement."
+        : "",
+    });
   }
 
   leave() {

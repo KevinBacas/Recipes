@@ -13,26 +13,38 @@ vi.mock("@/lib/supabase/server", () => ({ createClient: mocks.createClient }));
 vi.mock("next/cache", () => ({ revalidatePath: mocks.revalidatePath }));
 vi.mock("next/navigation", () => ({
   redirect: (path: string) => {
-    throw Object.assign(new Error(`NEXT_REDIRECT ${path}`), { digest: `NEXT_REDIRECT;push;${path};307;` });
+    throw Object.assign(new Error(`NEXT_REDIRECT ${path}`), {
+      digest: `NEXT_REDIRECT;push;${path};307;`,
+    });
   },
 }));
 
 const ownerId = "11111111-1111-4111-8111-111111111111";
 const recipeId = "22222222-2222-4222-8222-222222222222";
 
-function recipeForm(options: { id?: string; revision?: number; photo?: boolean; removePhoto?: boolean } = {}) {
+function recipeForm(
+  options: { id?: string; revision?: number; photo?: boolean; removePhoto?: boolean } = {},
+) {
   const form = new FormData();
-  form.set("recipe", JSON.stringify({
-    id: options.id,
-    revision: options.revision,
-    title: "Crêpes",
-    servings: 4,
-    steps: [],
-    ingredients: [{ name: "Farine", aisle: "pantry", quantity: "500", unit: "g" }],
-  }));
+  form.set(
+    "recipe",
+    JSON.stringify({
+      id: options.id,
+      revision: options.revision,
+      title: "Crêpes",
+      servings: 4,
+      steps: [],
+      ingredients: [{ name: "Farine", aisle: "pantry", quantity: "500", unit: "g" }],
+    }),
+  );
   form.set("removePhoto", String(options.removePhoto ?? false));
   if (options.photo) {
-    form.set("photo", new File([Uint8Array.from([137, 80, 78, 71, 13, 10, 26, 10])], "photo.png", { type: "image/png" }));
+    form.set(
+      "photo",
+      new File([Uint8Array.from([137, 80, 78, 71, 13, 10, 26, 10])], "photo.png", {
+        type: "image/png",
+      }),
+    );
   }
   return form;
 }
@@ -60,7 +72,10 @@ describe("Server Actions de recettes", () => {
   });
 
   it("ne lit plus l'ancienne photo avant la RPC et transmet l'intention de remplacement", async () => {
-    rpc.mockResolvedValueOnce({ data: { id: recipeId, previous_photo_path: `${ownerId}/ancienne.png` }, error: null });
+    rpc.mockResolvedValueOnce({
+      data: { id: recipeId, previous_photo_path: `${ownerId}/ancienne.png` },
+      error: null,
+    });
     const result = await saveRecipe(recipeForm({ id: recipeId, revision: 3, photo: true }));
 
     expect(result).toEqual({ ok: true, data: { id: recipeId } });
@@ -86,7 +101,10 @@ describe("Server Actions de recettes", () => {
   });
 
   it("retire l'ancienne photo seulement lorsque la RPC confirme sa suppression", async () => {
-    rpc.mockResolvedValueOnce({ data: { id: recipeId, previous_photo_path: `${ownerId}/ancienne.png` }, error: null });
+    rpc.mockResolvedValueOnce({
+      data: { id: recipeId, previous_photo_path: `${ownerId}/ancienne.png` },
+      error: null,
+    });
     const result = await saveRecipe(recipeForm({ id: recipeId, revision: 1, removePhoto: true }));
 
     expect(result.ok).toBe(true);
@@ -98,7 +116,10 @@ describe("Server Actions de recettes", () => {
     rpc.mockResolvedValueOnce({ data: null, error: { code: "P0001", message: "RECIPE_CHANGED" } });
     const result = await saveRecipe(recipeForm({ id: recipeId, revision: 0, photo: true }));
 
-    expect(result).toMatchObject({ ok: false, error: expect.stringContaining("modifiée sur un autre appareil") });
+    expect(result).toMatchObject({
+      ok: false,
+      error: expect.stringContaining("modifiée sur un autre appareil"),
+    });
     expect(remove).toHaveBeenCalledWith([expect.stringMatching(new RegExp(`^${ownerId}/`))]);
   });
 
@@ -111,7 +132,10 @@ describe("Server Actions de recettes", () => {
   });
 
   it("retourne un succès même si le nettoyage Storage échoue après le commit", async () => {
-    rpc.mockResolvedValueOnce({ data: { id: recipeId, previous_photo_path: `${ownerId}/ancienne.png` }, error: null });
+    rpc.mockResolvedValueOnce({
+      data: { id: recipeId, previous_photo_path: `${ownerId}/ancienne.png` },
+      error: null,
+    });
     remove.mockResolvedValueOnce({ data: null, error: { name: "StorageError" } });
 
     expect(await saveRecipe(recipeForm({ id: recipeId, revision: 0, photo: true }))).toEqual({
@@ -128,6 +152,9 @@ describe("Server Actions de recettes", () => {
 
   it("affiche un échec de déconnexion au lieu de renvoyer vers la page privée", async () => {
     signOutRequest.mockResolvedValueOnce({ error: { code: "AUTH_ERROR", message: "Unavailable" } });
-    expect(await signOut()).toMatchObject({ ok: false, error: expect.stringContaining("Déconnexion impossible") });
+    expect(await signOut()).toMatchObject({
+      ok: false,
+      error: expect.stringContaining("Déconnexion impossible"),
+    });
   });
 });

@@ -30,17 +30,17 @@ bibliothèque supplémentaire de gestion des données.
 
 ## État des lieux
 
-| Domaine | Évaluation | Éléments observés |
-| --- | --- | --- |
-| Architecture | Bonne base | Pages serveur fines ; dépendances React/Supabase absentes des calculs et de l'autosave |
-| Accès privés | Contrat solide dans les sources | Auth dans les actions ; RLS ; références composées ; EXECUTE limité ; `search_path` vide |
-| Calculs | Bien isolés et testés | Decimal, conversions explicites, arrondi à l'affichage, conservation des petits besoins |
-| Sauvegarde des portions | Bon exemple à conserver | File indépendante de React ; états explicites ; tests de requêtes lentes et réponses perdues |
-| Lisibilité | Principal frein quotidien | JSX, callbacks et CSS écrits sur de très longues lignes |
-| Orchestration des photos | À corriger en priorité | Lecture ancienne, commit et compensation ne partagent pas un contrat de concurrence fiable |
-| Frontières de données | Fragiles face à une évolution | RPC JSON converties directement en types métier |
-| Tests | Bonne base, couverture inégale | 47 tests locaux ; aucune suite locale dédiée aux actions/lectures ; tests SQL dépendants de leur ordre |
-| Documentation | Globalement cohérente | Responsabilités, contrats SQL et choix durable documentés ; portée de la concurrence à préciser |
+| Domaine                  | Évaluation                      | Éléments observés                                                                                      |
+| ------------------------ | ------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| Architecture             | Bonne base                      | Pages serveur fines ; dépendances React/Supabase absentes des calculs et de l'autosave                 |
+| Accès privés             | Contrat solide dans les sources | Auth dans les actions ; RLS ; références composées ; EXECUTE limité ; `search_path` vide               |
+| Calculs                  | Bien isolés et testés           | Decimal, conversions explicites, arrondi à l'affichage, conservation des petits besoins                |
+| Sauvegarde des portions  | Bon exemple à conserver         | File indépendante de React ; états explicites ; tests de requêtes lentes et réponses perdues           |
+| Lisibilité               | Principal frein quotidien       | JSX, callbacks et CSS écrits sur de très longues lignes                                                |
+| Orchestration des photos | À corriger en priorité          | Lecture ancienne, commit et compensation ne partagent pas un contrat de concurrence fiable             |
+| Frontières de données    | Fragiles face à une évolution   | RPC JSON converties directement en types métier                                                        |
+| Tests                    | Bonne base, couverture inégale  | 47 tests locaux ; aucune suite locale dédiée aux actions/lectures ; tests SQL dépendants de leur ordre |
+| Documentation            | Globalement cohérente           | Responsabilités, contrats SQL et choix durable documentés ; portée de la concurrence à préciser        |
 
 Le contrôle de session via `getClaims()` et la propagation des cookies dans le
 proxy correspondent au [modèle SSR Supabase](https://supabase.com/docs/guides/auth/server-side/creating-a-client?queryGroups=framework&framework=nextjs).
@@ -274,14 +274,14 @@ indépendantes de la base et adapter seulement les duplications réellement util
 
 ## Plan de correction
 
-| Lot | Travail | Résultat attendu / critère d'acceptation |
-| --- | --- | --- |
-| 1 — R1/R2 | Ajouter les tests de panne et concurrence des actions, puis corriger le cycle de vie photo et le contrat RPC | Aucune référence à un objet supprimé dans les scénarios reproduits ; succès métier distinct du nettoyage |
-| 2 — R3/R7 | Formatage mécanique séparé ; fixtures SQL autonomes | Diffs lisibles ; tests filtrés exécutables sans dépendre d'autres cas |
-| 3 — R4/R8 | Extraire photos/erreurs côté serveur, puis brouillon/sections et contrôleur Realtime | Responsabilités explicites ; diagnostics conservés ; comportements existants inchangés |
-| 4 — R5/R6 | Renforcer les contrats JSON/SQL et définir le comportement du formulaire face aux modifications distantes | Réponse invalide détectée à la frontière ; étapes NULL refusées ; brouillon préservé et conflit explicite |
-| 5 — R9/R10 | Lectures ciblées, projections et règles TypeScript communes | Chaque écran charge les données nécessaires ; validations cohérentes |
-| 6 — transversal | E2E isolés, contrôle PostgreSQL concurrent, documentation et éventuellement CI `npm run check` | Parcours complet vérifié ; portée des tests et nouveaux contrats documentés |
+| Lot             | Travail                                                                                                      | Résultat attendu / critère d'acceptation                                                                  |
+| --------------- | ------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------- |
+| 1 — R1/R2       | Ajouter les tests de panne et concurrence des actions, puis corriger le cycle de vie photo et le contrat RPC | Aucune référence à un objet supprimé dans les scénarios reproduits ; succès métier distinct du nettoyage  |
+| 2 — R3/R7       | Formatage mécanique séparé ; fixtures SQL autonomes                                                          | Diffs lisibles ; tests filtrés exécutables sans dépendre d'autres cas                                     |
+| 3 — R4/R8       | Extraire photos/erreurs côté serveur, puis brouillon/sections et contrôleur Realtime                         | Responsabilités explicites ; diagnostics conservés ; comportements existants inchangés                    |
+| 4 — R5/R6       | Renforcer les contrats JSON/SQL et définir le comportement du formulaire face aux modifications distantes    | Réponse invalide détectée à la frontière ; étapes NULL refusées ; brouillon préservé et conflit explicite |
+| 5 — R9/R10      | Lectures ciblées, projections et règles TypeScript communes                                                  | Chaque écran charge les données nécessaires ; validations cohérentes                                      |
+| 6 — transversal | E2E isolés, contrôle PostgreSQL concurrent, documentation et éventuellement CI `npm run check`               | Parcours complet vérifié ; portée des tests et nouveaux contrats documentés                               |
 
 Les tests associés accompagnent chaque correction ; ils ne sont pas différés au
 dernier lot. Chaque lot applicatif termine par `npm run check`. Les mutations SQL

@@ -9,15 +9,15 @@ tests conservent néanmoins l'isolation entre comptes distincts.
 
 ## Modèle
 
-| Table | Rôle et contrat principal |
-| --- | --- |
-| `workspaces` | Une ligne par compte ; verrou et révision de la préparation |
-| `ingredients` | Catalogue du compte ; unicité du nom normalisé et rayon partagé |
-| `recipes` | Titre, portions d'origine, étapes, chemin de photo privé et révision de modification |
-| `recipe_ingredients` | Ingrédients ordonnés d'une recette, quantité et unité |
-| `meal_selections` | Occurrences de recettes à préparer avec leurs propres portions |
-| `shopping_lists` | Une seule liste active par compte et nombre de plats au moment de la génération |
-| `shopping_items` | Instantané du nom, rayon, quantité, unité et état coché |
+| Table                | Rôle et contrat principal                                                            |
+| -------------------- | ------------------------------------------------------------------------------------ |
+| `workspaces`         | Une ligne par compte ; verrou et révision de la préparation                          |
+| `ingredients`        | Catalogue du compte ; unicité du nom normalisé et rayon partagé                      |
+| `recipes`            | Titre, portions d'origine, étapes, chemin de photo privé et révision de modification |
+| `recipe_ingredients` | Ingrédients ordonnés d'une recette, quantité et unité                                |
+| `meal_selections`    | Occurrences de recettes à préparer avec leurs propres portions                       |
+| `shopping_lists`     | Une seule liste active par compte et nombre de plats au moment de la génération      |
+| `shopping_items`     | Instantané du nom, rayon, quantité, unité et état coché                              |
 
 Les clés étrangères composées avec `owner_id` interdisent les liens entre comptes.
 `to_taste` exige une quantité NULL ; les autres unités exigent une quantité positive.

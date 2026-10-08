@@ -30,13 +30,20 @@ export const authenticatedClient = cache(async () => {
   return { client, ownerId };
 });
 
-function readContract<T>(value: unknown, schema: { parse(value: unknown): T }, operation: string): T {
+function readContract<T>(
+  value: unknown,
+  schema: { parse(value: unknown): T },
+  operation: string,
+): T {
   try {
     return schema.parse(value);
   } catch (error) {
     if (error instanceof ZodError) {
       const issues = error.issues;
-      console.error(`[recipes] Réponse invalide pour ${operation}`, issues.map(({ path, code }) => ({ path, code })));
+      console.error(
+        `[recipes] Réponse invalide pour ${operation}`,
+        issues.map(({ path, code }) => ({ path, code })),
+      );
     } else {
       console.error(`[recipes] Décodage impossible pour ${operation}`);
     }
@@ -44,17 +51,27 @@ function readContract<T>(value: unknown, schema: { parse(value: unknown): T }, o
   }
 }
 
-async function attachPhotoUrls(recipes: Recipe[], ownerId: string, client: Awaited<ReturnType<typeof createClient>>) {
-  const paths = recipes.flatMap(recipe => recipe.photo_path ? [recipe.photo_path] : []);
-  if (!paths.length) return recipes.map(recipe => ({ ...recipe, photo_url: null }));
+async function attachPhotoUrls(
+  recipes: Recipe[],
+  ownerId: string,
+  client: Awaited<ReturnType<typeof createClient>>,
+) {
+  const paths = recipes.flatMap((recipe) => (recipe.photo_path ? [recipe.photo_path] : []));
+  if (!paths.length) return recipes.map((recipe) => ({ ...recipe, photo_url: null }));
 
   const { data, error } = await client.storage.from("recipe-photos").createSignedUrls(paths, 3600);
   if (error) console.error("[recipes] Signature des photos impossible", { code: error.name });
 
-  const urls = new Map(data?.flatMap(image => image.path && image.signedUrl ? [[image.path, image.signedUrl] as const] : []));
-  return recipes.map(recipe => ({
+  const urls = new Map(
+    data?.flatMap((image) =>
+      image.path && image.signedUrl ? [[image.path, image.signedUrl] as const] : [],
+    ),
+  );
+  return recipes.map((recipe) => ({
     ...recipe,
-    photo_url: recipe.photo_path?.startsWith(`${ownerId}/`) ? urls.get(recipe.photo_path) ?? null : null,
+    photo_url: recipe.photo_path?.startsWith(`${ownerId}/`)
+      ? (urls.get(recipe.photo_path) ?? null)
+      : null,
   }));
 }
 
@@ -110,7 +127,11 @@ export async function getPreparation(): Promise<Preparation> {
     console.error("[recipes] Lecture de la préparation impossible", { code: error.code });
     throw new Error("Impossible de charger les plats sélectionnés.");
   }
-  return readContract(data ?? { revision: 0, selections: [] }, preparationSchema, "get_preparation");
+  return readContract(
+    data ?? { revision: 0, selections: [] },
+    preparationSchema,
+    "get_preparation",
+  );
 }
 
 export async function getShoppingList(): Promise<ShoppingList | null> {

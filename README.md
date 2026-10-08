@@ -38,6 +38,7 @@ Ouvrir [localhost:3000](http://localhost:3000). Sans configuration, l’applicat
    ```
 
    Pour une installation neuve, appliquer toutes les migrations. Si elles ont déjà été appliquées via le connecteur ou le SQL Editor, vérifier l’historique du projet cible avant de les rejouer ou de les synchroniser avec la CLI.
+
 3. Dans **Authentication → Users → Add user → Create new user**, créer votre compte commun avec votre email et votre mot de passe. Activer **Auto Confirm User**. N’utiliser aucun compte de test pour votre foyer.
 4. Dans les réglages **Authentication**, désactiver **Allow new users to sign up** et les connexions anonymes. Ne pas désactiver la connexion email/mot de passe. Aucun formulaire d’inscription n’est fourni.
 5. Dans **URL Configuration**, définir l’URL du site déployé comme **Site URL**. La connexion par mot de passe n’envoie pas d’email et ne nécessite pas de SMTP. En cas de mot de passe oublié, le réinitialiser via l’administration Supabase.

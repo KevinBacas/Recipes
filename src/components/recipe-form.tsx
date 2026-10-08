@@ -7,16 +7,29 @@ import { Save } from "lucide-react";
 import { type Ingredient, type Recipe } from "@/lib/domain";
 import { saveRecipe } from "@/app/actions";
 import { ErrorMessage, Spinner } from "./ui";
-import { IngredientSection, RecipeBasicsSection, StepsSection, type IngredientLine } from "./recipe-form-sections";
+import {
+  IngredientSection,
+  RecipeBasicsSection,
+  StepsSection,
+  type IngredientLine,
+} from "./recipe-form-sections";
 
-const blankLine = (key: string): IngredientLine => ({ key, name: "", aisle: "other", quantity: "", unit: "g" });
+const blankLine = (key: string): IngredientLine => ({
+  key,
+  name: "",
+  aisle: "other",
+  quantity: "",
+  unit: "g",
+});
 
 function initialLines(recipe?: Recipe): IngredientLine[] {
-  return recipe?.ingredients.map((line, index) => ({
-    ...line,
-    quantity: line.quantity === null ? "" : String(line.quantity).replace(".", ","),
-    key: `line-${index}`,
-  })) ?? [blankLine("line-0")];
+  return (
+    recipe?.ingredients.map((line, index) => ({
+      ...line,
+      quantity: line.quantity === null ? "" : String(line.quantity).replace(".", ","),
+      key: `line-${index}`,
+    })) ?? [blankLine("line-0")]
+  );
 }
 
 export function RecipeForm({ recipe, catalog }: { recipe?: Recipe; catalog: Ingredient[] }) {
@@ -35,9 +48,12 @@ export function RecipeForm({ recipe, catalog }: { recipe?: Recipe; catalog: Ingr
   const [error, setError] = useState("");
   const [pending, startTransition] = useTransition();
 
-  useEffect(() => () => {
-    if (preview) URL.revokeObjectURL(preview);
-  }, [preview]);
+  useEffect(
+    () => () => {
+      if (preview) URL.revokeObjectURL(preview);
+    },
+    [preview],
+  );
 
   const loadRecipe = useCallback((source: Recipe | undefined) => {
     setTitle(source?.title ?? "");
@@ -63,7 +79,7 @@ export function RecipeForm({ recipe, catalog }: { recipe?: Recipe; catalog: Ingr
   const markDirty = () => setDirty(true);
   const updateLine = (key: string, patch: Partial<IngredientLine>) => {
     markDirty();
-    setLines(current => current.map(line => line.key === key ? { ...line, ...patch } : line));
+    setLines((current) => current.map((line) => (line.key === key ? { ...line, ...patch } : line)));
   };
 
   function choosePhoto(file: File) {
@@ -80,99 +96,131 @@ export function RecipeForm({ recipe, catalog }: { recipe?: Recipe; catalog: Ingr
 
   const image = preview ?? (!removePhoto ? photoUrl : null);
 
-  return <form className="recipe-form" onSubmit={event => {
-    event.preventDefault();
-    setError("");
+  return (
+    <form
+      className="recipe-form"
+      onSubmit={(event) => {
+        event.preventDefault();
+        setError("");
 
-    const form = new FormData();
-    form.set("recipe", JSON.stringify({
-      id: recipe?.id,
-      revision: draftRevision,
-      title,
-      servings,
-      steps: steps.filter(step => step.trim()),
-      ingredients: lines.map(({ ingredient_id, name, aisle, quantity, unit }) => ({
-        ingredient_id,
-        name,
-        aisle,
-        quantity,
-        unit,
-      })),
-    }));
-    form.set("removePhoto", String(removePhoto));
-    if (photo) form.set("photo", photo);
+        const form = new FormData();
+        form.set(
+          "recipe",
+          JSON.stringify({
+            id: recipe?.id,
+            revision: draftRevision,
+            title,
+            servings,
+            steps: steps.filter((step) => step.trim()),
+            ingredients: lines.map(({ ingredient_id, name, aisle, quantity, unit }) => ({
+              ingredient_id,
+              name,
+              aisle,
+              quantity,
+              unit,
+            })),
+          }),
+        );
+        form.set("removePhoto", String(removePhoto));
+        if (photo) form.set("photo", photo);
 
-    startTransition(async () => {
-      try {
-        const result = await saveRecipe(form);
-        if (!result.ok) {
-          setError(result.error);
-          return;
-        }
-        router.push(`/recettes/${result.data.id}`);
-        router.refresh();
-      } catch {
-        setError("La recette n’a pas pu être enregistrée. Vérifiez votre connexion et réessayez.");
-      }
-    });
-  }}>
-    <fieldset disabled={pending} className="form-fields">
-      <RecipeBasicsSection
-        title={title}
-        servings={servings}
-        image={image}
-        onTitleChange={value => { markDirty(); setTitle(value); }}
-        onServingsChange={value => { markDirty(); setServings(value); }}
-        onPhotoChange={choosePhoto}
-        onPhotoRemove={() => {
-          markDirty();
-          setPhoto(null);
-          setPreview(null);
-          setRemovePhoto(true);
-        }}
-      />
-      <IngredientSection
-        formId={formId}
-        catalog={catalog}
-        lines={lines}
-        onLineChange={updateLine}
-        onLineRemove={key => {
-          markDirty();
-          setLines(current => current.filter(line => line.key !== key));
-        }}
-        onLineAdd={() => {
-          markDirty();
-          setLines(current => [...current, blankLine(crypto.randomUUID())]);
-        }}
-      />
-      <StepsSection
-        steps={steps}
-        onStepChange={(index, value) => {
-          markDirty();
-          setSteps(current => current.map((step, currentIndex) => currentIndex === index ? value : step));
-        }}
-        onStepRemove={index => {
-          markDirty();
-          setSteps(current => current.filter((_, currentIndex) => currentIndex !== index));
-        }}
-        onStepAdd={() => {
-          markDirty();
-          setSteps(current => [...current, ""]);
-        }}
-      />
-    </fieldset>
+        startTransition(async () => {
+          try {
+            const result = await saveRecipe(form);
+            if (!result.ok) {
+              setError(result.error);
+              return;
+            }
+            router.push(`/recettes/${result.data.id}`);
+            router.refresh();
+          } catch {
+            setError(
+              "La recette n’a pas pu être enregistrée. Vérifiez votre connexion et réessayez.",
+            );
+          }
+        });
+      }}
+    >
+      <fieldset disabled={pending} className="form-fields">
+        <RecipeBasicsSection
+          title={title}
+          servings={servings}
+          image={image}
+          onTitleChange={(value) => {
+            markDirty();
+            setTitle(value);
+          }}
+          onServingsChange={(value) => {
+            markDirty();
+            setServings(value);
+          }}
+          onPhotoChange={choosePhoto}
+          onPhotoRemove={() => {
+            markDirty();
+            setPhoto(null);
+            setPreview(null);
+            setRemovePhoto(true);
+          }}
+        />
+        <IngredientSection
+          formId={formId}
+          catalog={catalog}
+          lines={lines}
+          onLineChange={updateLine}
+          onLineRemove={(key) => {
+            markDirty();
+            setLines((current) => current.filter((line) => line.key !== key));
+          }}
+          onLineAdd={() => {
+            markDirty();
+            setLines((current) => [...current, blankLine(crypto.randomUUID())]);
+          }}
+        />
+        <StepsSection
+          steps={steps}
+          onStepChange={(index, value) => {
+            markDirty();
+            setSteps((current) =>
+              current.map((step, currentIndex) => (currentIndex === index ? value : step)),
+            );
+          }}
+          onStepRemove={(index) => {
+            markDirty();
+            setSteps((current) => current.filter((_, currentIndex) => currentIndex !== index));
+          }}
+          onStepAdd={() => {
+            markDirty();
+            setSteps((current) => [...current, ""]);
+          }}
+        />
+      </fieldset>
 
-    {remoteConflict && recipe && <ErrorMessage>
-      Cette recette a changé sur l’autre appareil. Votre saisie est conservée jusqu’à ce que vous choisissiez la dernière version.
-      <button type="button" className="text-button" onClick={() => loadRecipe(recipe)}>Reprendre la dernière version</button>
-    </ErrorMessage>}
-    {error && <ErrorMessage>{error}</ErrorMessage>}
+      {remoteConflict && recipe && (
+        <ErrorMessage>
+          Cette recette a changé sur l’autre appareil. Votre saisie est conservée jusqu’à ce que
+          vous choisissiez la dernière version.
+          <button type="button" className="text-button" onClick={() => loadRecipe(recipe)}>
+            Reprendre la dernière version
+          </button>
+        </ErrorMessage>
+      )}
+      {error && <ErrorMessage>{error}</ErrorMessage>}
 
-    <div className="form-footer">
-      <Link href={recipe ? `/recettes/${recipe.id}` : "/recettes"} className="button button-secondary">Annuler</Link>
-      <button type="submit" className="button button-primary" disabled={pending || remoteConflict}>
-        {pending ? <Spinner/> : <Save size={18}/>}Enregistrer la recette
-      </button>
-    </div>
-  </form>;
+      <div className="form-footer">
+        <Link
+          href={recipe ? `/recettes/${recipe.id}` : "/recettes"}
+          className="button button-secondary"
+        >
+          Annuler
+        </Link>
+        <button
+          type="submit"
+          className="button button-primary"
+          disabled={pending || remoteConflict}
+        >
+          {pending ? <Spinner /> : <Save size={18} />}Enregistrer la recette
+        </button>
+      </div>
+    </form>
+  );
 }

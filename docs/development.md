@@ -17,13 +17,13 @@ expliquent le rôle et des commentaires qui expliquent une contrainte inhabituel
 
 ## Contrôles selon le changement
 
-| Changement | Vérification |
-| --- | --- |
-| Code applicatif, migration ou configuration du build | `npm run check` : lint, types, Vitest et build |
-| Calcul ou autosave | Tests ciblés pendant le travail, puis `npm run check` |
-| Schéma, RLS ou RPC | Tests SQL PGlite et contrôles de droits/concurrence concernés |
-| Interaction, Auth, Realtime ou Storage | Playwright sur un compte isolé, en complément des contrôles locaux |
-| Documentation ou skills seulement | Frontmatter des skills locaux, liens, chemins et exactitude des instructions |
+| Changement                                           | Vérification                                                                 |
+| ---------------------------------------------------- | ---------------------------------------------------------------------------- |
+| Code applicatif, migration ou configuration du build | `npm run check` : lint, types, Vitest et build                               |
+| Calcul ou autosave                                   | Tests ciblés pendant le travail, puis `npm run check`                        |
+| Schéma, RLS ou RPC                                   | Tests SQL PGlite et contrôles de droits/concurrence concernés                |
+| Interaction, Auth, Realtime ou Storage               | Playwright sur un compte isolé, en complément des contrôles locaux           |
+| Documentation ou skills seulement                    | Frontmatter des skills locaux, liens, chemins et exactitude des instructions |
 
 Les commandes des tests ciblés utilisent les fichiers réels, par exemple :
 
