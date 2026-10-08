@@ -2,7 +2,7 @@
 
 Un carnet de recettes privé et une liste de courses partagée, pour un compte commun utilisé sur deux téléphones. Application Next.js, TypeScript et Supabase, conçue pour le mobile.
 
-Documentation du dépôt : [architecture](docs/architecture.md), [contrats SQL](docs/database.md), [développement et skills](docs/development.md) et [décision sur les mutations](docs/decisions/0001-mutations-transactionnelles.md). Les consignes pour les agents sont dans [AGENTS.md](AGENTS.md).
+Documentation du dépôt : [architecture](docs/architecture.md), [contrats SQL](docs/database.md), [développement et skills](docs/development.md) et [décision sur les mutations](docs/decisions/0001-mutations-transactionnelles.md). Les consignes pour les agents sont dans [AGENTS.md](AGENTS.md), avec un [guide du workflow](docs/agent-workflow.md).
 
 Application déployée : [À table](https://recipes-virid-tau.vercel.app). Connectez-vous avec votre compte commun Supabase.
 

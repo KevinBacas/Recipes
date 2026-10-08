@@ -4,6 +4,40 @@ Application privée en français, pensée pour deux téléphones utilisant un co
 commun. Lire le [README](README.md) et la documentation du domaine concerné avant
 de modifier son comportement.
 
+## Stratégie d'agents
+
+Pour chaque demande, l'agent principal applique le
+[workflow du dépôt](docs/agent-workflow.md) dans le périmètre demandé par
+l'utilisateur. Une question ou une demande de spécification seule ne déclenche
+pas d'implémentation. Une instruction explicite de l'utilisateur prévaut sur ce
+workflow.
+
+- L'agent principal, GPT-6.1 Sol par défaut, cadre la demande, pose les questions
+  nécessaires, définit les critères d'acceptation et reste responsable de
+  l'intégration et de la livraison.
+- Pour les tâches de développement délimitées, déléguer explicitement à
+  `implementer_luna` ; utiliser `implementer_sol` pour les tâches complexes ou
+  sensibles (Auth, droits, SQL, concurrence, Realtime, Storage).
+- Les petites corrections de texte, documentation ou présentation peuvent être
+  traitées directement. Toute fonctionnalité, correction de logique ou évolution
+  sensible, ainsi que toute modification de cette stratégie ou de sa
+  configuration, reçoit une revue indépendante par `reviewer_astra`.
+- Avant de déléguer, fournir le besoin, les contrats, les critères d'acceptation,
+  les fichiers attribués et les contrôles attendus. Limiter à deux sous-agents
+  simultanés et à un rédacteur par fichier ; stabiliser les contrats avant de
+  paralléliser les implémentations.
+- Attendre les contributions, intégrer, exécuter les contrôles adaptés puis
+  demander la revue. Après collecte des résultats, fermer les threads devenus
+  inutiles avant de lancer un autre rôle : le plafond compte les threads ouverts,
+  même terminés. Corriger les défauts retenus, justifier ceux écartés et faire
+  revoir les corrections importantes avant de livrer.
+- Les sous-agents suivent leur mission et les consignes du dépôt, sans lancer
+  ce workflow à nouveau ni créer d'autres sous-agents. L'agent principal prend
+  en charge les questions à l'utilisateur et les opérations Git.
+- Si un modèle, un rôle ou la délégation n'est pas disponible, signaler la limite
+  et appliquer le repli décrit dans le guide ; ne pas présenter une auto-revue
+  comme une revue indépendante Astra.
+
 ## Skills du dépôt
 
 Les skills sont dans `.agents/skills/`. Lire leur `SKILL.md` quand le déclencheur

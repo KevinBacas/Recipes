@@ -81,6 +81,14 @@ réponses SQL dans les schémas Zod ; les valeurs invalides doivent être rejet�
 et seules les absences prévues par le contrat sont acceptées. Une erreur de service
 ne doit pas être transformée silencieusement en liste vide.
 
+## Travail avec les agents
+
+Le [workflow des agents](agent-workflow.md) décrit le cadrage par Sol, la
+délégation à Luna ou Sol et la revue indépendante par Astra selon le changement.
+[AGENTS.md](../AGENTS.md) en fixe les déclencheurs ; `.codex/` contient les modèles
+et les rôles du dépôt. Consulter le guide pour l'activation dans le client,
+les missions, les replis et les critères de livraison.
+
 ## Skills du bundle 2
 
 Les six skills sont stockés en fichiers réels dans `.agents/skills/`, pour être
