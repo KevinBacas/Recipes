@@ -18,6 +18,8 @@ cp .env.example .env.local
 
 Dans `.env.local`, renseigner l’URL du projet et sa **publishable key**, disponibles dans le dialogue **Connect** de Supabase. L’application ne nécessite aucune clé `service_role` ni aucun mot de passe de base de données.
 
+Pour proposer automatiquement un rayon aux nouveaux noms d’ingrédients, vous pouvez aussi définir `AI_GATEWAY_API_KEY` dans `.env.local`. Cette clé Vercel AI Gateway est facultative : sans elle, les rayons restent saisissables et enregistrables manuellement.
+
 Appliquer les migrations, créer le compte commun et désactiver les inscriptions comme indiqué ci-dessous, puis lancer :
 
 ```sh
@@ -53,6 +55,8 @@ Importer le projet dans Vercel avec le preset Next.js et Node.js 22. Définir ce
 ```text
 NEXT_PUBLIC_SUPABASE_URL
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+# Facultatif : suggestions de rayon des ingrédients
+AI_GATEWAY_API_KEY
 ```
 
 Déployer, puis utiliser votre compte commun sur chacun des téléphones. Les identifiants sont ceux du compte **Authentication**, pas ceux du tableau de bord Supabase.
@@ -64,6 +68,8 @@ npx vercel login
 npx vercel link
 npx vercel env add NEXT_PUBLIC_SUPABASE_URL production
 npx vercel env add NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY production
+# Facultatif : suggestions de rayon des ingrédients
+npx vercel env add AI_GATEWAY_API_KEY production
 npx vercel --prod
 ```
 
@@ -75,7 +81,7 @@ Le build utilise Webpack pour fonctionner aussi dans les environnements où les 
 - Sur **Préparer**, les portions s’enregistrent automatiquement après une courte pause de saisie, ou dès que le champ perd le focus. La génération attend les sauvegardes en cours. Une valeur invalide ou un enregistrement échoué bloque la génération et peut être corrigé ou réessayé.
 - La génération attend les ajouts et retraits de plats déjà lancés. Lorsqu’une recette est modifiée sur l’autre appareil, un formulaire local déjà modifié signale le conflit et demande de charger la dernière version ; la sauvegarde vérifie aussi la révision en base.
 - Le catalogue identifie les ingrédients par leur nom normalisé (casse et espaces). Le choix d’un ingrédient existant évite les doublons ; les synonymes et singuliers/pluriels ne sont pas fusionnés automatiquement.
-- Le rayon est partagé par toutes les recettes utilisant cet ingrédient.
+- Le rayon est partagé par toutes les recettes utilisant cet ingrédient. Un ingrédient déjà au catalogue conserve son rayon ; pour un nouveau nom, une suggestion peut être chargée à la perte de focus. Elle reste modifiable et n’est enregistrée qu’avec la recette. En l’absence de clé ou si le classement échoue, la saisie et l’enregistrement manuels restent disponibles.
 - Grammes et kilogrammes se regroupent ; millilitres, centilitres et litres aussi. Masses, volumes, pièces, cuillères et pincées restent distincts. Les mentions « au goût » ne sont pas chiffrées.
 - Les calculs utilisent une arithmétique décimale ; l’affichage arrondit à trois décimales. L’application calcule les besoins, pas le nombre de paquets à acheter.
 - La génération crée un instantané unique, indépendant des modifications ou suppressions ultérieures des recettes. Remplacer la liste nécessite une confirmation et réinitialise les cases cochées.

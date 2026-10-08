@@ -14,6 +14,7 @@ import {
 } from "@/lib/domain";
 
 import type { IngredientLine } from "@/lib/recipe-draft";
+import type { IngredientClassificationStatus } from "@/lib/ingredient-classification-client";
 
 export function RecipeBasicsSection({
   title,
@@ -107,16 +108,22 @@ export function IngredientSection({
   formId,
   catalog,
   lines,
+  classificationStatuses,
   onLineChange,
   onLineRemove,
   onLineAdd,
+  onLineBlur,
+  onAisleManualChange,
 }: {
   formId: string;
   catalog: Ingredient[];
   lines: IngredientLine[];
+  classificationStatuses: Record<string, IngredientClassificationStatus | undefined>;
   onLineChange: (key: string, patch: Partial<IngredientLine>) => void;
   onLineRemove: (key: string) => void;
   onLineAdd: () => void;
+  onLineBlur: (key: string, name: string) => void;
+  onAisleManualChange: (key: string, aisle: Aisle) => void;
 }) {
   const catalogId = `${formId}-catalog`;
 
@@ -157,6 +164,7 @@ export function IngredientSection({
                     aisle: known?.aisle ?? line.aisle,
                   });
                 }}
+                onBlur={(event) => onLineBlur(line.key, event.currentTarget.value)}
               />
             </label>
             <label className="field ingredient-quantity">
@@ -193,7 +201,11 @@ export function IngredientSection({
               Rayon
               <select
                 value={line.aisle}
-                onChange={(event) => onLineChange(line.key, { aisle: event.target.value as Aisle })}
+                onChange={(event) => {
+                  const aisle = event.target.value as Aisle;
+                  onAisleManualChange(line.key, aisle);
+                  onLineChange(line.key, { aisle });
+                }}
               >
                 {AISLES.map((aisle) => (
                   <option key={aisle.id} value={aisle.id}>
@@ -211,6 +223,21 @@ export function IngredientSection({
             >
               <Trash2 size={18} />
             </button>
+            {classificationStatuses[line.key] && (
+              <p
+                className="field-hint ingredient-classification-status"
+                role="status"
+                style={{ gridColumn: "1 / -1", marginTop: 0 }}
+              >
+                {classificationStatuses[line.key] === "pending" && "Recherche du rayon…"}
+                {classificationStatuses[line.key] === "suggested" &&
+                  "Rayon proposé automatiquement. Vous pouvez le modifier."}
+                {classificationStatuses[line.key] === "catalog" && "Rayon du catalogue partagé."}
+                {classificationStatuses[line.key] === "manual" && "Rayon choisi manuellement."}
+                {classificationStatuses[line.key] === "unavailable" &&
+                  "Aucune suggestion disponible ; vous pouvez choisir le rayon."}
+              </p>
+            )}
           </div>
         ))}
       </div>
