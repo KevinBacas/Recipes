@@ -32,6 +32,14 @@ npm test -- tests/domain.test.ts tests/portion-autosave.test.ts
 npm test -- tests/database.test.ts
 ```
 
+Les tests ciblés du classement sont `npm test -- tests/ingredient-classification.test.ts tests/ingredient-classification-route.test.ts`.
+Le premier simule le modèle pour contrôler les critères de choix, les réponses
+invalides, le délai et l’absence de clé, sans appeler AI Gateway. Le second vérifie
+la validation, la session, la lecture limitée au catalogue du compte et les réponses
+de la route. Pour une vérification manuelle, `AI_GATEWAY_API_KEY` est facultative et
+reste côté serveur ; ne pas consigner les noms d’ingrédients ni la clé dans les logs.
+Ces tests ne prouvent pas un appel réel au modèle ni la configuration de la production.
+
 Les E2E nécessitent un build et un compte Supabase de test, dont les données sont
 supprimées par les scénarios. Leur configuration et leurs commandes sont dans le
 [README](../README.md#vérifications). Ne jamais utiliser le compte du foyer.

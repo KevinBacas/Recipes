@@ -19,8 +19,10 @@
     "test:postgres": "node scripts/test-postgres.mjs"
   },
   "dependencies": {
+    "@ai-sdk/gateway": "^4.0.108",
     "@supabase/ssr": "^0.10.0",
     "@supabase/supabase-js": "^2.0.0",
+    "ai": "^7.0.134",
     "clsx": "^2.1.1",
     "decimal.js": "^10.6.0",
     "lucide-react": "^0.577.0",

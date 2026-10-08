@@ -4,18 +4,22 @@
 
 ## Responsabilités
 
-| Emplacement                       | Responsabilité                                                                   |
-| --------------------------------- | -------------------------------------------------------------------------------- |
-| `src/app/(private)/`              | Pages protégées, chargement serveur, layout commun et états de chargement/erreur |
-| `src/app/actions.ts`              | Connexion, mutations validées avec Zod, RPC, gestion des photos et revalidation  |
-| `src/components/`                 | Présentation et interactions, sans écriture directe des tables Supabase          |
-| `src/lib/domain.ts`               | Contrats métier, unités, validation, agrégation et affichage des quantités       |
-| `src/lib/portion-autosave.ts`     | File de sauvegarde des portions, indépendante de React                           |
-| `src/lib/data.ts`                 | Lectures authentifiées et URLs temporaires des photos                            |
-| `src/lib/use-realtime-refresh.ts` | Canal Realtime, reconnexion, nettoyage et rafraîchissement des lectures          |
-| `src/lib/supabase/`               | Clients SSR/navigateur, configuration, types générés et adaptation des RPC       |
-| `src/proxy.ts`                    | Rafraîchissement de la session et propagation des cookies                        |
-| `supabase/migrations/`            | Schéma, droits, transactions et publication Realtime                             |
+| Emplacement                                   | Responsabilité                                                                   |
+| --------------------------------------------- | -------------------------------------------------------------------------------- |
+| `src/app/(private)/`                          | Pages protégées, chargement serveur, layout commun et états de chargement/erreur |
+| `src/app/actions.ts`                          | Connexion, mutations validées avec Zod, RPC, gestion des photos et revalidation  |
+| `src/app/api/ingredients/classify/route.ts`   | Classement ponctuel authentifié, sans écriture                                   |
+| `src/components/`                             | Présentation et interactions, sans écriture directe des tables Supabase          |
+| `src/lib/domain.ts`                           | Contrats métier, unités, validation, agrégation et affichage des quantités       |
+| `src/lib/ingredient-classification.ts`        | Contrat partagé du classement et de ses rayons                                   |
+| `src/lib/ingredient-classification-client.ts` | Coordination des suggestions et saisies manuelles côté formulaire                |
+| `src/lib/server/ingredient-classification.ts` | Suggestion côté serveur avec AI Gateway facultative                              |
+| `src/lib/portion-autosave.ts`                 | File de sauvegarde des portions, indépendante de React                           |
+| `src/lib/data.ts`                             | Lectures authentifiées et URLs temporaires des photos                            |
+| `src/lib/use-realtime-refresh.ts`             | Canal Realtime, reconnexion, nettoyage et rafraîchissement des lectures          |
+| `src/lib/supabase/`                           | Clients SSR/navigateur, configuration, types générés et adaptation des RPC       |
+| `src/proxy.ts`                                | Rafraîchissement de la session et propagation des cookies                        |
+| `supabase/migrations/`                        | Schéma, droits, transactions et publication Realtime                             |
 
 ## Lecture et mutation
 
@@ -31,6 +35,16 @@ session et appelle une RPC. La base contrôle les droits et la transaction ;
 l'action renvoie un `ActionResult` avec une erreur compréhensible en cas d'échec,
 puis revalide les routes concernées après un succès. Les contrôles du layout et
 de l'interface ne remplacent pas les contrôles dans les actions et la base.
+
+La route `POST /api/ingredients/classify` vérifie la session avec les claims
+Supabase et limite la recherche du catalogue au compte courant. Un rayon trouvé
+dans le catalogue est renvoyé directement ; sinon, si `AI_GATEWAY_API_KEY` est
+configurée, le serveur demande une suggestion avec `openai/gpt-6-luna-decisions`
+via le SDK Vercel AI et `@ai-sdk/gateway`, avec un délai maximal de cinq secondes
+et sans nouvelle tentative. Seul le nom de l’ingrédient est transmis.
+Cette route ne modifie pas la base : le rayon choisi est sauvegardé par le flux
+normal de recette et ses RPC. Sans clé ou en cas d’échec, le formulaire conserve
+la saisie manuelle.
 
 Le navigateur emploie Supabase pour la session du canal Realtime et ses événements.
 `useRealtimeRefresh` porte le cycle de vie du canal ; `RealtimeRefresh` n'affiche
