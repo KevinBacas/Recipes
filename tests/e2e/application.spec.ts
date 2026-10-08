@@ -464,5 +464,5 @@ test("un retrait en cours bloque la génération avec une liste existante et sa 
   await expect(page.getByRole("dialog", { name: "Remplacer la liste de courses ?" })).toBeVisible();
   await page.getByRole("button", { name: "Générer la nouvelle liste", exact: true }).click();
   await expect(page).toHaveURL(/\/courses$/);
-  await expect(page.getByRole("checkbox", { name: "Farine, 250 g", exact: true })).toBeVisible();
+  await expect(page.getByRole("checkbox", { name: "Farine, 500 g", exact: true })).toBeVisible();
 });
