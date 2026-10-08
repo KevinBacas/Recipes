@@ -65,7 +65,10 @@ de réponse. Les limites et compromis sont décrits dans la
 [décision dédiée](decisions/0002-revisions-et-reprise-des-recettes.md).
 
 `generateList` relit la préparation et sa révision, calcule les quantités avec
-`aggregateShopping`, puis appelle `replace_shopping_list`. Les nombres sont
+`aggregateShopping`. Les ajouts et retraits sont suivis avant les transitions
+React pour bloquer immédiatement la génération pendant une mutation en attente.
+La génération attend aussi leur résolution avant de lire la préparation.
+Elle appelle ensuite `replace_shopping_list`. Les nombres sont
 calculés avec `decimal.js`. La base vérifie la révision et l'identité de la liste
 attendue avant de remplacer l'instantané. Les règles métier visibles sont décrites
 dans le [README](../README.md#fonctionnement).

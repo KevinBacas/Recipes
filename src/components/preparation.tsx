@@ -60,9 +60,11 @@ function SelectedDish({
   }, [autosave, register, selection.id]);
   const run = (operation: () => ReturnType<typeof saveSelection>) => {
     setError("");
+    // Track before the transition so sibling controls disable while the request is held.
+    const request = trackOperation(operation);
     startTransition(async () => {
       try {
-        const result = await trackOperation(operation);
+        const result = await request;
         if (!result.ok) setError(result.error);
       } catch {
         setError("Le plat n’a pas pu être enregistré. Réessayez.");

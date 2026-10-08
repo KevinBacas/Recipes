@@ -339,6 +339,7 @@ test("portions automatiques et recettes partagées entre deux sessions", async (
     secondPage.getByRole("heading", { name: "Soupe partagée", exact: true }),
   ).toBeVisible();
   await page.getByRole("link", { name: /Soupe partagée/ }).click();
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Soupe partagée");
   const editUrl = `${new URL(page.url()).pathname}/modifier`;
   await page.goto(editUrl);
   await secondPage.goto(editUrl);
@@ -350,7 +351,7 @@ test("portions automatiques et recettes partagées entre deux sessions", async (
   await expect(
     secondPage.getByRole("heading", { name: "Soupe distante", exact: true }),
   ).toBeVisible();
-  await expect(page.getByRole("alert")).toContainText(
+  await expect(page.locator(".recipe-form").getByRole("alert")).toContainText(
     "Cette recette a changé sur l’autre appareil",
   );
   await expect(localTitle).toHaveValue("Soupe locale");
@@ -388,7 +389,7 @@ test("un formulaire intact suit la recette distante et garde sa photo après éd
     await expect(page.getByLabel("Nom de la recette", { exact: true })).toHaveValue(
       "Version distante",
     );
-    await expect(page.getByRole("alert")).toHaveCount(0);
+    await expect(page.locator(".recipe-form").getByRole("alert")).toHaveCount(0);
     await expect
       .poll(() =>
         remote
@@ -396,7 +397,9 @@ test("un formulaire intact suit la recette distante et garde sa photo après éd
           .evaluate((image) => (image as HTMLImageElement).naturalWidth),
       )
       .toBeGreaterThan(0);
-    await page.getByLabel("Étape 1", { exact: true }).fill("Laisser reposer, puis cuire.");
+    await page
+      .getByRole("textbox", { name: "Étape 1", exact: true })
+      .fill("Laisser reposer, puis cuire.");
     await page.getByRole("button", { name: "Enregistrer la recette", exact: true }).click();
     await expect(page.getByRole("heading", { level: 1 })).toHaveText("Version distante");
     await expect
