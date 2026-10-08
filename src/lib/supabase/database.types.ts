@@ -117,6 +117,7 @@ export type Database = {
           created_at: string
           id: string
           owner_id: string
+          revision: number
           photo_path: string | null
           servings: number
           steps: string[]
@@ -126,6 +127,7 @@ export type Database = {
           created_at?: string
           id?: string
           owner_id: string
+          revision?: number
           photo_path?: string | null
           servings: number
           steps?: string[]
@@ -135,6 +137,7 @@ export type Database = {
           created_at?: string
           id?: string
           owner_id?: string
+          revision?: number
           photo_path?: string | null
           servings?: number
           steps?: string[]
@@ -234,9 +237,11 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      delete_recipe: { Args: { p_id: string }; Returns: undefined }
+      delete_recipe: { Args: { p_id: string }; Returns: Json }
       delete_selection: { Args: { p_id: string }; Returns: undefined }
       get_preparation: { Args: never; Returns: Json }
+      get_recipe: { Args: { p_id: string }; Returns: Json }
+      get_recipe_summaries: { Args: never; Returns: Json }
       get_recipes: { Args: never; Returns: Json }
       get_shopping_list: { Args: never; Returns: Json }
       lock_workspace: { Args: never; Returns: string }
@@ -247,13 +252,15 @@ export type Database = {
       save_recipe: {
         Args: {
           p_id: string
+          p_expected_revision: number
           p_ingredients: Json
+          p_photo_action: string
           p_photo_path: string
           p_servings: number
           p_steps: string[]
           p_title: string
         }
-        Returns: string
+        Returns: Json
       }
       save_selection: {
         Args: { p_id: string; p_recipe_id: string; p_servings: number }
@@ -395,4 +402,3 @@ export const Constants = {
     Enums: {},
   },
 } as const
-

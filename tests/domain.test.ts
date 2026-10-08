@@ -3,7 +3,7 @@ import { aggregateShopping, formatAmount, parseQuantity, recipeSchema, type Reci
 
 const ingredientId = "11111111-1111-4111-8111-111111111111";
 const line = (quantity: number | null, unit: RecipeIngredient["unit"] = "g", id = ingredientId): RecipeIngredient => ({ ingredient_id: id, name: "Farine", aisle: "pantry", quantity, unit });
-const dish = (ingredients: RecipeIngredient[], base = 2, servings = 2): Selection => ({ id: crypto.randomUUID(), servings, recipe: { id: crypto.randomUUID(), title: "Recette", servings: base, ingredients, steps: [], photo_path: null, created_at: "2026-10-02" } });
+const dish = (ingredients: RecipeIngredient[], base = 2, servings = 2): Selection => ({ id: crypto.randomUUID(), servings, recipe: { id: crypto.randomUUID(), title: "Recette", servings: base, ingredients } });
 
 describe("courses", () => {
   it("adapte les portions avant d’additionner", () => {

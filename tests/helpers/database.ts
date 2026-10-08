@@ -25,6 +25,16 @@ export async function createDatabase() {
   }
   return db;
 }
+
+export async function resetAccount(db: PGlite, ownerId: string) {
+  await db.exec(`
+    delete from public.shopping_lists where owner_id = '${ownerId}';
+    delete from public.recipes where owner_id = '${ownerId}';
+    delete from public.ingredients where owner_id = '${ownerId}';
+    delete from public.workspaces where owner_id = '${ownerId}';
+    delete from storage.objects where name like '${ownerId}/%';
+  `);
+}
 export async function asAccount<T>(db: PGlite, ownerId: string, operation: (tx: Transaction) => Promise<T>) {
   return db.transaction(async tx => {
     await tx.exec("set local role authenticated");
@@ -34,9 +44,10 @@ export async function asAccount<T>(db: PGlite, ownerId: string, operation: (tx: 
 }
 export async function rpc<T>(db: PGlite, ownerId: string, name: string, args: Record<string, unknown> = {}) {
   const signatures: Record<string, [string, string][]> = {
-    get_recipes: [], get_preparation: [], get_shopping_list: [],
-    save_recipe: [["p_id","uuid"],["p_title","text"],["p_servings","integer"],["p_steps","text[]"],["p_ingredients","jsonb"],["p_photo_path","text"]],
-    delete_recipe: [["p_id","uuid"]], save_selection: [["p_id","uuid"],["p_recipe_id","uuid"],["p_servings","integer"]],
+    get_recipes: [], get_preparation: [], get_shopping_list: [], get_recipe_summaries: [],
+    get_recipe: [["p_id", "uuid"]],
+    save_recipe: [["p_id", "uuid"], ["p_expected_revision", "bigint"], ["p_title", "text"], ["p_servings", "integer"], ["p_steps", "text[]"], ["p_ingredients", "jsonb"], ["p_photo_action", "text"], ["p_photo_path", "text"]],
+    delete_recipe: [["p_id", "uuid"]], save_selection: [["p_id","uuid"],["p_recipe_id","uuid"],["p_servings","integer"]],
     delete_selection: [["p_id","uuid"]], replace_shopping_list: [["p_revision","bigint"],["p_expected_list_id","uuid"],["p_items","jsonb"]],
     set_shopping_item_checked: [["p_id","uuid"],["p_list_id","uuid"],["p_checked","boolean"]],
   };

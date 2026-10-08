@@ -72,6 +72,7 @@ Le build utilise Webpack pour fonctionner aussi dans les environnements où les 
 
 - Une recette conserve ses portions d’origine. L’affichage et chaque occurrence d’un plat peuvent utiliser un autre nombre de portions.
 - Sur **Préparer**, les portions s’enregistrent automatiquement après une courte pause de saisie, ou dès que le champ perd le focus. La génération attend les sauvegardes en cours. Une valeur invalide ou un enregistrement échoué bloque la génération et peut être corrigé ou réessayé.
+- La génération attend les ajouts et retraits de plats déjà lancés. Lorsqu’une recette est modifiée sur l’autre appareil, un formulaire local déjà modifié signale le conflit et demande de charger la dernière version ; la sauvegarde vérifie aussi la révision en base.
 - Le catalogue identifie les ingrédients par leur nom normalisé (casse et espaces). Le choix d’un ingrédient existant évite les doublons ; les synonymes et singuliers/pluriels ne sont pas fusionnés automatiquement.
 - Le rayon est partagé par toutes les recettes utilisant cet ingrédient.
 - Grammes et kilogrammes se regroupent ; millilitres, centilitres et litres aussi. Masses, volumes, pièces, cuillères et pincées restent distincts. Les mentions « au goût » ne sont pas chiffrées.
@@ -120,7 +121,7 @@ npm run build
 npm run test:e2e
 ```
 
-Les scénarios couvrent la création avec photo, les portions automatiques, les saisies pendant une requête lente, la génération après sauvegarde, deux sessions simultanées, le partage des créations et suppressions, la persistance après actualisation, la récupération après une coupure réseau, l’échec d’enregistrement et sa reprise, la modification d’une recette, la confirmation et le remplacement de liste. Chrome et WebKit mobile sont vérifiés. Pour tester une URL déployée, définir `E2E_BASE_URL`.
+Les scénarios couvrent la création avec photo, les portions automatiques, les saisies pendant une requête lente, l’attente des ajouts avant génération, deux sessions simultanées, le partage des créations et suppressions, la persistance après actualisation, la récupération après une coupure réseau, l’échec d’enregistrement et sa reprise, le conflit de modification d’une recette, la confirmation et le remplacement de liste. Chrome et WebKit mobile sont vérifiés. Pour tester une URL déployée, définir `E2E_BASE_URL`.
 
 ## Première version
 

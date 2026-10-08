@@ -13,7 +13,7 @@ tests conservent néanmoins l'isolation entre comptes distincts.
 | --- | --- |
 | `workspaces` | Une ligne par compte ; verrou et révision de la préparation |
 | `ingredients` | Catalogue du compte ; unicité du nom normalisé et rayon partagé |
-| `recipes` | Titre, portions d'origine, étapes et chemin de photo privé |
+| `recipes` | Titre, portions d'origine, étapes, chemin de photo privé et révision de modification |
 | `recipe_ingredients` | Ingrédients ordonnés d'une recette, quantité et unité |
 | `meal_selections` | Occurrences de recettes à préparer avec leurs propres portions |
 | `shopping_lists` | Une seule liste active par compte et nombre de plats au moment de la génération |
@@ -29,8 +29,10 @@ l'instantané de courses déjà généré.
 
 Les sept tables ont RLS et une policy SELECT du propriétaire. `authenticated` peut
 lire ses lignes, sans INSERT, UPDATE ou DELETE directs. `anon` n'a aucun droit sur
-ces tables. Les RPC de lecture `get_recipes`, `get_preparation` et
-`get_shopping_list` sont `SECURITY INVOKER` et respectent RLS.
+ces tables. Les RPC de lecture `get_recipes`, `get_recipe`, `get_recipe_summaries`,
+`get_preparation` et `get_shopping_list` sont `SECURITY INVOKER` et respectent
+RLS. `get_recipe` cible un identifiant ; `get_recipe_summaries` ne renvoie que
+les données utiles au choix des plats.
 
 Les six RPC de mutation sont `save_recipe`, `delete_recipe`, `save_selection`,
 `delete_selection`, `replace_shopping_list` et `set_shopping_item_checked`.
@@ -41,6 +43,12 @@ et verrouille la ligne du compte avec `FOR UPDATE`. Cette fonction interne n'est
 pas exécutable directement par les rôles publics.
 
 Les mutations de recette et de sélection incrémentent la révision du workspace.
+`save_recipe` prend une révision attendue pour les éditions existantes et compare
+cette valeur sous verrou avec `recipes.revision`. Il reçoit aussi l'intention photo
+(`keep`, `replace` ou `remove`) ; il retourne le chemin remplacé dans le même
+résultat transactionnel. `delete_recipe` retourne le chemin de la photo supprimée.
+Le serveur ne compense un upload que lorsque PostgreSQL confirme le rollback ; une
+réponse de transport incertaine ne prouve pas que la transaction a échoué.
 `replace_shopping_list` refuse une révision NULL ou périmée (`PLAN_CHANGED`), une
 identité de liste inattendue (`LIST_CHANGED`) et une préparation vide. Le remplacement
 est atomique. `set_shopping_item_checked` refuse un article d'une liste remplacée ;
@@ -66,7 +74,8 @@ sélections, y compris les suppressions. Voir [l'architecture](architecture.md#s
 ## Migrations et types
 
 Les migrations s'appliquent dans l'ordre de leur nom : schéma initial, garde de
-révision et index de références, puis publication de `workspaces`. Ne pas réécrire
+révision et index de références, publication de `workspaces`, puis contrat des
+photos et révisions de recettes. Ne pas réécrire
 une migration déjà appliquée. Créer une nouvelle migration avec
 `supabase migration new <nom>`, après avoir vérifié le `--help` de la CLI installée.
 Ce dépôt utilise des migrations impératives, sans `supabase/schemas/`.

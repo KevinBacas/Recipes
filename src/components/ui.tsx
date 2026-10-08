@@ -10,14 +10,14 @@ export function Spinner() { return <LoaderCircle size={18} className="spin" aria
 export function EmptyState({ icon: Icon, title, children, action }: { icon: LucideIcon; title: string; children: React.ReactNode; action?: React.ReactNode }) {
   return <div className="empty-state"><span className="empty-icon"><Icon size={34} strokeWidth={1.5}/></span><h2>{title}</h2><p>{children}</p>{action}</div>;
 }
-export function ConfirmDialog({ trigger, title, children, confirmLabel, onConfirm, destructive = false, onSuccess }: {
+export function ConfirmDialog({ trigger, title, children, confirmLabel, onConfirm, destructive = false, onSuccess, disabled = false }: {
   trigger: React.ReactNode; title: string; children: React.ReactNode; confirmLabel: string;
-  onConfirm: () => Promise<ActionResult>; destructive?: boolean; onSuccess?: () => void;
+  onConfirm: () => Promise<ActionResult>; destructive?: boolean; onSuccess?: () => void; disabled?: boolean;
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const [error, setError] = useState("");
   const [pending, startTransition] = useTransition();
-  return <><button type="button" className={destructive ? "button button-danger-quiet" : "button button-primary"} onClick={() => { setError(""); dialog.current?.showModal(); }}>{trigger}</button>
+  return <><button type="button" className={destructive ? "button button-danger-quiet" : "button button-primary"} disabled={disabled} onClick={() => { setError(""); dialog.current?.showModal(); }}>{trigger}</button>
     <dialog ref={dialog} className="confirm-dialog" aria-label={title} onCancel={event => { if (pending) event.preventDefault(); }}>
       <button type="button" className="icon-button modal-close" aria-label="Fermer" disabled={pending} onClick={() => dialog.current?.close()}><X size={20}/></button>
       <h2>{title}</h2><p>{children}</p>{error && <ErrorMessage>{error}</ErrorMessage>}

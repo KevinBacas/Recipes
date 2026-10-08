@@ -12,6 +12,7 @@
 | `src/lib/domain.ts` | Contrats métier, unités, validation, agrégation et affichage des quantités |
 | `src/lib/portion-autosave.ts` | File de sauvegarde des portions, indépendante de React |
 | `src/lib/data.ts` | Lectures authentifiées et URLs temporaires des photos |
+| `src/lib/use-realtime-refresh.ts` | Canal Realtime, reconnexion, nettoyage et rafraîchissement des lectures |
 | `src/lib/supabase/` | Clients SSR/navigateur, configuration, types générés et adaptation des RPC |
 | `src/proxy.ts` | Rafraîchissement de la session et propagation des cookies |
 | `supabase/migrations/` | Schéma, droits, transactions et publication Realtime |
@@ -32,9 +33,13 @@ puis revalide les routes concernées après un succès. Les contrôles du layout
 de l'interface ne remplacent pas les contrôles dans les actions et la base.
 
 Le navigateur emploie Supabase pour la session du canal Realtime et ses événements.
-Les lectures métier passent par le serveur ; les écritures de tables passent par
-les RPC appelées depuis le serveur. Les photos passent par l'API Storage côté
-serveur, avec validation du contenu et compensation d'un upload si la RPC échoue.
+`useRealtimeRefresh` porte le cycle de vie du canal ; `RealtimeRefresh` n'affiche
+que son état. Les lectures métier passent par le serveur ; les écritures de tables
+passent par les RPC appelées depuis le serveur. Les réponses RPC sont validées à
+leur frontière avec Zod. Les photos passent par l'API Storage côté serveur : la
+RPC exprime l'intention de conserver, remplacer ou retirer la photo dans la même
+transaction que la recette. La révision de recette refuse une édition périmée ;
+le détail et l'édition lisent uniquement la recette demandée.
 
 ## Portions et génération des courses
 
@@ -43,6 +48,11 @@ sauvegarde par plat. La saisie déclenche une sauvegarde après 350 ms ; la pert
 de focus et la génération forcent la sauvegarde. Une valeur invalide ou un échec
 empêche la génération. `reconcile` accepte une valeur serveur seulement quand
 aucune édition ou sauvegarde locale n'est en cours.
+
+La génération attend aussi les ajouts et retraits de plats déjà lancés. Dans le
+formulaire de recette, une saisie intacte accepte les données distantes ; si elle
+a été modifiée, une révision distante est signalée et doit être chargée explicitement
+avant d'écraser l'édition.
 
 `generateList` relit la préparation et sa révision, calcule les quantités avec
 `aggregateShopping`, puis appelle `replace_shopping_list`. Les nombres sont

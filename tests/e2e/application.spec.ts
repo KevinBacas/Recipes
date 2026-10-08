@@ -154,8 +154,24 @@ test("portions automatiques et recettes partagées entre deux sessions", async (
   await navigate(page, "Préparer"); await navigate(secondPage, "Préparer");
   await expect(secondPage.getByRole("heading", { name: "1 plat à préparer", exact: true })).toBeVisible();
 
+  let releaseAdd!: () => void; let addStarted!: () => void;
+  const pendingAdd = new Promise<void>(resolve => { releaseAdd = resolve; });
+  const addRequestStarted = new Promise<void>(resolve => { addStarted = resolve; });
+  let heldAdd = false;
+  await page.route("**/preparer", async route => {
+    if (route.request().method() === "POST" && !heldAdd) {
+      heldAdd = true;
+      addStarted();
+      await pendingAdd;
+    }
+    await route.continue();
+  });
   await page.getByRole("button", { name: "Ajouter Soupe partagée aux plats", exact: true }).click();
+  await addRequestStarted;
+  await expect(page.getByRole("button", { name: "Générer les courses", exact: true })).toBeDisabled();
+  releaseAdd();
   await expect(secondPage.getByRole("heading", { name: "2 plats à préparer", exact: true })).toBeVisible();
+  await page.unroute("**/preparer");
   await page.getByRole("button", { name: "Retirer Soupe partagée", exact: true }).nth(1).click();
   await expect(secondPage.getByRole("heading", { name: "1 plat à préparer", exact: true })).toBeVisible();
 
@@ -209,6 +225,21 @@ test("portions automatiques et recettes partagées entre deux sessions", async (
   await navigate(page, "Recettes"); await navigate(secondPage, "Recettes");
   await expect(secondPage.getByRole("heading", { name: "Soupe partagée", exact: true })).toBeVisible();
   await page.getByRole("link", { name: /Soupe partagée/ }).click();
+  const editUrl = `${new URL(page.url()).pathname}/modifier`;
+  await page.goto(editUrl);
+  await secondPage.goto(editUrl);
+  const localTitle = page.getByLabel("Nom de la recette", { exact: true });
+  const remoteTitle = secondPage.getByLabel("Nom de la recette", { exact: true });
+  await localTitle.fill("Soupe locale");
+  await remoteTitle.fill("Soupe distante");
+  await secondPage.getByRole("button", { name: "Enregistrer la recette", exact: true }).click();
+  await expect(secondPage.getByRole("heading", { name: "Soupe distante", exact: true })).toBeVisible();
+  await expect(page.getByRole("alert")).toContainText("Cette recette a changé sur l’autre appareil");
+  await expect(localTitle).toHaveValue("Soupe locale");
+  await page.getByRole("button", { name: "Reprendre la dernière version", exact: true }).click();
+  await expect(localTitle).toHaveValue("Soupe distante");
+  await navigate(page, "Recettes");
+  await page.getByRole("link", { name: /Soupe distante/ }).click();
   await page.getByRole("button", { name: "Supprimer la recette", exact: true }).click();
   await page.getByRole("dialog").getByRole("button", { name: "Supprimer", exact: true }).click();
   await expect(secondPage.getByRole("heading", { name: "Soupe partagée", exact: true })).toHaveCount(0);
