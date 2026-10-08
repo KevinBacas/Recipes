@@ -38,6 +38,7 @@ Ouvrir [localhost:3000](http://localhost:3000). Sans configuration, l’applicat
    ```
 
    Pour une installation neuve, appliquer toutes les migrations. Si elles ont déjà été appliquées via le connecteur ou le SQL Editor, vérifier l’historique du projet cible avant de les rejouer ou de les synchroniser avec la CLI.
+
 3. Dans **Authentication → Users → Add user → Create new user**, créer votre compte commun avec votre email et votre mot de passe. Activer **Auto Confirm User**. N’utiliser aucun compte de test pour votre foyer.
 4. Dans les réglages **Authentication**, désactiver **Allow new users to sign up** et les connexions anonymes. Ne pas désactiver la connexion email/mot de passe. Aucun formulaire d’inscription n’est fourni.
 5. Dans **URL Configuration**, définir l’URL du site déployé comme **Site URL**. La connexion par mot de passe n’envoie pas d’email et ne nécessite pas de SMTP. En cas de mot de passe oublié, le réinitialiser via l’administration Supabase.
@@ -72,6 +73,7 @@ Le build utilise Webpack pour fonctionner aussi dans les environnements où les 
 
 - Une recette conserve ses portions d’origine. L’affichage et chaque occurrence d’un plat peuvent utiliser un autre nombre de portions.
 - Sur **Préparer**, les portions s’enregistrent automatiquement après une courte pause de saisie, ou dès que le champ perd le focus. La génération attend les sauvegardes en cours. Une valeur invalide ou un enregistrement échoué bloque la génération et peut être corrigé ou réessayé.
+- La génération attend les ajouts et retraits de plats déjà lancés. Lorsqu’une recette est modifiée sur l’autre appareil, un formulaire local déjà modifié signale le conflit et demande de charger la dernière version ; la sauvegarde vérifie aussi la révision en base.
 - Le catalogue identifie les ingrédients par leur nom normalisé (casse et espaces). Le choix d’un ingrédient existant évite les doublons ; les synonymes et singuliers/pluriels ne sont pas fusionnés automatiquement.
 - Le rayon est partagé par toutes les recettes utilisant cet ingrédient.
 - Grammes et kilogrammes se regroupent ; millilitres, centilitres et litres aussi. Masses, volumes, pièces, cuillères et pincées restent distincts. Les mentions « au goût » ne sont pas chiffrées.
@@ -105,7 +107,16 @@ npm test
 npm run build
 ```
 
-Les tests de calcul et de droits utilisent un PostgreSQL isolé via PGlite. Ils appliquent la migration réelle et vérifient les transactions, les accès anonymes et entre comptes, les photos, la stabilité des instantanés et les remplacements concurrents.
+Les tests locaux appliquent les migrations réelles dans PGlite et vérifient les
+calculs, les droits, les instantanés, les contrats JSON et les actions avec Storage
+simulé. Ils comprennent des entrelacements contrôlés d'actions, mais ne prouvent
+pas à eux seuls le verrou entre connexions PostgreSQL.
+
+`npm run test:postgres` vérifie ce verrou sur une base PostgreSQL locale vide et
+isolée, avec plusieurs connexions. Sans configuration, le script crée puis détruit
+un conteneur Docker PostgreSQL 17 ; avec `TEST_POSTGRES_URL`, il exige une base locale
+nommée `recipes_test_*`. Voir le [guide de développement](docs/development.md).
+`npm run format:check` contrôle le formatage reproductible des sources maintenues.
 
 Les tests navigateur utilisent un **compte Supabase de test isolé** et la base réelle. Ils suppriment les recettes de ce compte avant chaque scénario. Ne jamais utiliser le compte du foyer. Créer `.env.e2e.local`, ignoré par Git :
 
@@ -120,7 +131,9 @@ npm run build
 npm run test:e2e
 ```
 
-Les scénarios couvrent la création avec photo, les portions automatiques, les saisies pendant une requête lente, la génération après sauvegarde, deux sessions simultanées, le partage des créations et suppressions, la persistance après actualisation, la récupération après une coupure réseau, l’échec d’enregistrement et sa reprise, la modification d’une recette, la confirmation et le remplacement de liste. Chrome et WebKit mobile sont vérifiés. Pour tester une URL déployée, définir `E2E_BASE_URL`.
+Les scénarios couvrent la création avec photo, les portions automatiques, les saisies pendant une requête lente, l’attente des ajouts avant génération, deux sessions simultanées, le partage des créations et suppressions, la persistance après actualisation, la récupération après une coupure réseau, l’échec d’enregistrement et sa reprise, le conflit de modification d’une recette, la confirmation et le remplacement de liste. Ces scénarios sont configurés pour Chrome et WebKit mobile ; leur présence ou
+leur listing ne constitue pas une exécution réussie. Le bilan de validation de la
+PR précise les exécutions effectivement réalisées. Pour tester une URL déployée, définir `E2E_BASE_URL`.
 
 ## Première version
 

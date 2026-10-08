@@ -4,17 +4,18 @@
 
 ## Responsabilités
 
-| Emplacement | Responsabilité |
-| --- | --- |
-| `src/app/(private)/` | Pages protégées, chargement serveur, layout commun et états de chargement/erreur |
-| `src/app/actions.ts` | Connexion, mutations validées avec Zod, RPC, gestion des photos et revalidation |
-| `src/components/` | Présentation et interactions, sans écriture directe des tables Supabase |
-| `src/lib/domain.ts` | Contrats métier, unités, validation, agrégation et affichage des quantités |
-| `src/lib/portion-autosave.ts` | File de sauvegarde des portions, indépendante de React |
-| `src/lib/data.ts` | Lectures authentifiées et URLs temporaires des photos |
-| `src/lib/supabase/` | Clients SSR/navigateur, configuration, types générés et adaptation des RPC |
-| `src/proxy.ts` | Rafraîchissement de la session et propagation des cookies |
-| `supabase/migrations/` | Schéma, droits, transactions et publication Realtime |
+| Emplacement                       | Responsabilité                                                                   |
+| --------------------------------- | -------------------------------------------------------------------------------- |
+| `src/app/(private)/`              | Pages protégées, chargement serveur, layout commun et états de chargement/erreur |
+| `src/app/actions.ts`              | Connexion, mutations validées avec Zod, RPC, gestion des photos et revalidation  |
+| `src/components/`                 | Présentation et interactions, sans écriture directe des tables Supabase          |
+| `src/lib/domain.ts`               | Contrats métier, unités, validation, agrégation et affichage des quantités       |
+| `src/lib/portion-autosave.ts`     | File de sauvegarde des portions, indépendante de React                           |
+| `src/lib/data.ts`                 | Lectures authentifiées et URLs temporaires des photos                            |
+| `src/lib/use-realtime-refresh.ts` | Canal Realtime, reconnexion, nettoyage et rafraîchissement des lectures          |
+| `src/lib/supabase/`               | Clients SSR/navigateur, configuration, types générés et adaptation des RPC       |
+| `src/proxy.ts`                    | Rafraîchissement de la session et propagation des cookies                        |
+| `supabase/migrations/`            | Schéma, droits, transactions et publication Realtime                             |
 
 ## Lecture et mutation
 
@@ -32,9 +33,14 @@ puis revalide les routes concernées après un succès. Les contrôles du layout
 de l'interface ne remplacent pas les contrôles dans les actions et la base.
 
 Le navigateur emploie Supabase pour la session du canal Realtime et ses événements.
-Les lectures métier passent par le serveur ; les écritures de tables passent par
-les RPC appelées depuis le serveur. Les photos passent par l'API Storage côté
-serveur, avec validation du contenu et compensation d'un upload si la RPC échoue.
+`useRealtimeRefresh` porte le cycle de vie du canal ; `RealtimeRefresh` n'affiche
+que son état. `realtime-controller.ts` porte une durée de vie de souscription
+injectable et testée, tandis que le hook décide de sa recréation. Les lectures métier passent par le serveur ; les écritures de tables
+passent par les RPC appelées depuis le serveur. Les réponses RPC sont validées à
+leur frontière avec Zod. Les photos passent par l'API Storage côté serveur : la
+RPC exprime l'intention de conserver, remplacer ou retirer la photo dans la même
+transaction que la recette. La révision de recette refuse une édition périmée ;
+le détail et l'édition lisent uniquement la recette demandée.
 
 ## Portions et génération des courses
 
@@ -43,6 +49,20 @@ sauvegarde par plat. La saisie déclenche une sauvegarde après 350 ms ; la pert
 de focus et la génération forcent la sauvegarde. Une valeur invalide ou un échec
 empêche la génération. `reconcile` accepte une valeur serveur seulement quand
 aucune édition ou sauvegarde locale n'est en cours.
+
+La génération attend aussi les ajouts et retraits de plats déjà lancés. Dans le
+formulaire de recette, une saisie intacte accepte les données distantes ; si elle
+a été modifiée, une révision distante est signalée et doit être chargée explicitement
+avant de remplacer son brouillon. Les changements de rayon partagé versionnent
+aussi les recettes concernées. Les photos signées peuvent être renouvelées à
+révision identique, sans écraser une saisie locale.
+
+`recipe-draft.ts` transforme le brouillon en payload de création ou d'édition ;
+l'état du formulaire reste dans un seul propriétaire. Les helpers de
+`src/lib/server/` isolent les erreurs et les photos de l'orchestration des actions.
+La création utilise une identité stable et tente une réconciliation après perte
+de réponse. Les limites et compromis sont décrits dans la
+[décision dédiée](decisions/0002-revisions-et-reprise-des-recettes.md).
 
 `generateList` relit la préparation et sa révision, calcule les quantités avec
 `aggregateShopping`, puis appelle `replace_shopping_list`. Les nombres sont
@@ -69,4 +89,5 @@ une file d'attente hors ligne.
 Conserver les frontières ci-dessus tant qu'elles répondent au besoin. Une extraction
 doit clarifier une responsabilité réelle ; une nouvelle couche ou bibliothèque doit
 résoudre un problème concret. Les choix durables et leurs compromis sont conservés
-dans les [décisions d'architecture](decisions/0001-mutations-transactionnelles.md).
+dans les décisions sur les [mutations](decisions/0001-mutations-transactionnelles.md)
+et les [révisions/reprises](decisions/0002-revisions-et-reprise-des-recettes.md).

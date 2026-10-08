@@ -2,7 +2,9 @@
   "name": "a-table",
   "version": "1.0.0",
   "private": true,
-  "engines": { "node": ">=22.0.0" },
+  "engines": {
+    "node": ">=22.0.0"
+  },
   "scripts": {
     "dev": "next dev --webpack --hostname 0.0.0.0",
     "build": "next build --webpack",
@@ -11,7 +13,10 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:e2e": "playwright test",
-    "check": "npm run lint && npm run typecheck && npm test && npm run build"
+    "check": "npm run format:check && npm run lint && npm run typecheck && npm test && npm run build",
+    "format": "prettier --write src tests scripts docs README.md *.config.* .prettierrc.json package.json tsconfig.json",
+    "format:check": "prettier --check src tests scripts docs README.md *.config.* .prettierrc.json package.json tsconfig.json",
+    "test:postgres": "node scripts/test-postgres.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.10.0",
@@ -29,10 +34,13 @@
     "@playwright/test": "^1.58.0",
     "@tailwindcss/postcss": "^4.0.0",
     "@types/node": "^22.0.0",
+    "@types/pg": "8.23.1",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "eslint": "^9.0.0",
     "eslint-config-next": "16.3.8",
+    "pg": "8.23.1",
+    "prettier": "3.9.9",
     "tailwindcss": "^4.0.0",
     "typescript": "^5.9.0",
     "vitest": "^3.2.0"

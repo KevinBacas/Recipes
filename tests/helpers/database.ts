@@ -3,9 +3,7 @@ import { readFile, readdir } from "node:fs/promises";
 
 export const ACCOUNT = "11111111-1111-4111-8111-111111111111";
 export const OTHER_ACCOUNT = "22222222-2222-4222-8222-222222222222";
-export async function createDatabase() {
-  const db = new PGlite();
-  await db.exec(`
+export const BOOTSTRAP_SQL = `
     create role anon nologin; create role authenticated nologin;
     create schema auth; create schema storage;
     create table auth.users(id uuid primary key);
@@ -18,31 +16,92 @@ export async function createDatabase() {
     grant select,insert,delete on storage.objects to authenticated;
     create publication supabase_realtime;
     insert into auth.users(id) values ('${ACCOUNT}'), ('${OTHER_ACCOUNT}');
-  `);
+  `;
+
+export async function createDatabase(options: { migrationsThrough?: string } = {}) {
+  const db = new PGlite();
+  await db.exec(BOOTSTRAP_SQL);
   const directory = new URL("../../supabase/migrations/", import.meta.url);
-  for (const name of (await readdir(directory)).filter(name => name.endsWith(".sql")).sort()) {
-    await db.exec(await readFile(new URL(name, directory), "utf8"));
+  for (const name of (await readdir(directory)).filter((name) => name.endsWith(".sql")).sort()) {
+    if (!options.migrationsThrough || name <= options.migrationsThrough) {
+      await db.exec(await readFile(new URL(name, directory), "utf8"));
+    }
   }
   return db;
 }
-export async function asAccount<T>(db: PGlite, ownerId: string, operation: (tx: Transaction) => Promise<T>) {
-  return db.transaction(async tx => {
+
+export async function resetAccount(db: PGlite, ownerId: string) {
+  await db.exec(`
+    delete from public.shopping_lists where owner_id = '${ownerId}';
+    delete from public.recipes where owner_id = '${ownerId}';
+    delete from public.ingredients where owner_id = '${ownerId}';
+    delete from public.workspaces where owner_id = '${ownerId}';
+    delete from storage.objects where name like '${ownerId}/%';
+  `);
+}
+export async function asAccount<T>(
+  db: PGlite,
+  ownerId: string,
+  operation: (tx: Transaction) => Promise<T>,
+) {
+  return db.transaction(async (tx) => {
     await tx.exec("set local role authenticated");
     await tx.query("select set_config('request.jwt.claim.sub', $1, true)", [ownerId]);
     return operation(tx);
   });
 }
-export async function rpc<T>(db: PGlite, ownerId: string, name: string, args: Record<string, unknown> = {}) {
+export async function rpc<T>(
+  db: PGlite,
+  ownerId: string,
+  name: string,
+  args: Record<string, unknown> = {},
+) {
   const signatures: Record<string, [string, string][]> = {
-    get_recipes: [], get_preparation: [], get_shopping_list: [],
-    save_recipe: [["p_id","uuid"],["p_title","text"],["p_servings","integer"],["p_steps","text[]"],["p_ingredients","jsonb"],["p_photo_path","text"]],
-    delete_recipe: [["p_id","uuid"]], save_selection: [["p_id","uuid"],["p_recipe_id","uuid"],["p_servings","integer"]],
-    delete_selection: [["p_id","uuid"]], replace_shopping_list: [["p_revision","bigint"],["p_expected_list_id","uuid"],["p_items","jsonb"]],
-    set_shopping_item_checked: [["p_id","uuid"],["p_list_id","uuid"],["p_checked","boolean"]],
+    get_recipes: [],
+    get_preparation: [],
+    get_preparation_view: [],
+    get_shopping_list: [],
+    get_recipe_summaries: [],
+    get_recipe: [["p_id", "uuid"]],
+    save_recipe: [
+      ["p_id", "uuid"],
+      ["p_expected_revision", "bigint"],
+      ["p_title", "text"],
+      ["p_servings", "integer"],
+      ["p_steps", "text[]"],
+      ["p_ingredients", "jsonb"],
+      ["p_photo_action", "text"],
+      ["p_photo_path", "text"],
+      ["p_creation_id", "uuid"],
+      ["p_photo_hash", "text"],
+    ],
+    delete_recipe: [["p_id", "uuid"]],
+    save_selection: [
+      ["p_id", "uuid"],
+      ["p_recipe_id", "uuid"],
+      ["p_servings", "integer"],
+    ],
+    delete_selection: [["p_id", "uuid"]],
+    replace_shopping_list: [
+      ["p_revision", "bigint"],
+      ["p_expected_list_id", "uuid"],
+      ["p_items", "jsonb"],
+    ],
+    set_shopping_item_checked: [
+      ["p_id", "uuid"],
+      ["p_list_id", "uuid"],
+      ["p_checked", "boolean"],
+    ],
   };
-  const signature = signatures[name]; if (!signature) throw new Error("Unknown RPC");
-  return asAccount(db, ownerId, async tx => {
-    const result = await tx.query<{ data: T }>(`select public.${name}(${signature.map(([, cast], index) => `$${index+1}::${cast}`).join(",")}) as data`, signature.map(([key, cast]) => cast === "jsonb" ? JSON.stringify(args[key]) : args[key] ?? null));
+  const signature = signatures[name];
+  if (!signature) throw new Error("Unknown RPC");
+  return asAccount(db, ownerId, async (tx) => {
+    const result = await tx.query<{ data: T }>(
+      `select public.${name}(${signature.map(([, cast], index) => `$${index + 1}::${cast}`).join(",")}) as data`,
+      signature.map(([key, cast]) =>
+        cast === "jsonb" ? JSON.stringify(args[key]) : (args[key] ?? null),
+      ),
+    );
     return result.rows[0].data;
   });
 }

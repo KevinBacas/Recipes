@@ -13,7 +13,8 @@ export async function proxy(request: NextRequest) {
         values.forEach(({ name, value }) => request.cookies.set(name, value));
         response = NextResponse.next({ request });
         values.forEach(({ name, value, options }) => response.cookies.set(name, value, options));
-        if (headers) Object.entries(headers).forEach(([name, value]) => response.headers.set(name, value));
+        if (headers)
+          Object.entries(headers).forEach(([name, value]) => response.headers.set(name, value));
       },
     },
   });
@@ -21,4 +22,8 @@ export async function proxy(request: NextRequest) {
   response.headers.set("Cache-Control", "private, no-store");
   return response;
 }
-export const config = { matcher: ["/((?!_next/static|_next/image|favicon.ico|icon.svg|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)"] };
+export const config = {
+  matcher: [
+    "/((?!_next/static|_next/image|favicon.ico|icon.svg|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+  ],
+};

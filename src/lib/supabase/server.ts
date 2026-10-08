@@ -10,10 +10,15 @@ export async function createClient() {
   return createServerClient<AppDatabase>(url, key, {
     global: { fetch: (input, init) => fetch(input, { ...init, cache: "no-store" }) },
     cookies: {
-      getAll() { return cookieStore.getAll(); },
+      getAll() {
+        return cookieStore.getAll();
+      },
       setAll(values) {
-        try { values.forEach(({ name, value, options }) => cookieStore.set(name, value, options)); }
-        catch { /* Server Components are read-only; proxy refreshes the session. */ }
+        try {
+          values.forEach(({ name, value, options }) => cookieStore.set(name, value, options));
+        } catch {
+          /* Server Components are read-only; proxy refreshes the session. */
+        }
       },
     },
   });

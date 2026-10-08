@@ -8,5 +8,5 @@ export default async function Login() {
     const { data } = await client.auth.getClaims();
     if (data?.claims?.sub) redirect("/recettes");
   }
-  return <LoginForm configured={isConfigured()}/>;
+  return <LoginForm configured={isConfigured()} />;
 }
