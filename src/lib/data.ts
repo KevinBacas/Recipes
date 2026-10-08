@@ -2,10 +2,13 @@ import "server-only";
 
 import { cache } from "react";
 import { redirect } from "next/navigation";
+import { errorDetails } from "./server/action-errors";
 import { ZodError } from "zod";
 import {
   ingredientListSchema,
   preparationSchema,
+  preparationViewSchema,
+  type PreparationViewData,
   recipeListSchema,
   recipeRecordSchema,
   recipeSummaryListSchema,
@@ -59,9 +62,24 @@ async function attachPhotoUrls(
   const paths = recipes.flatMap((recipe) => (recipe.photo_path ? [recipe.photo_path] : []));
   if (!paths.length) return recipes.map((recipe) => ({ ...recipe, photo_url: null }));
 
-  const { data, error } = await client.storage.from("recipe-photos").createSignedUrls(paths, 3600);
+  const { data, error } = await client.storage
+    .from("recipe-photos")
+    .createSignedUrls(paths, 3600)
+    .catch((error) => {
+      console.error("[recipes] Service de signature indisponible", {
+        code: errorDetails(error).code,
+      });
+      return { data: null, error: null };
+    });
   if (error) console.error("[recipes] Signature des photos impossible", { code: error.name });
 
+  const photoErrors = data?.filter((image) => image.error);
+  if (photoErrors?.length) {
+    console.error("[recipes] Signature de certaines photos impossible", {
+      code: "STORAGE_OBJECT_ERROR",
+      count: photoErrors.length,
+    });
+  }
   const urls = new Map(
     data?.flatMap((image) =>
       image.path && image.signedUrl ? [[image.path, image.signedUrl] as const] : [],
@@ -83,7 +101,7 @@ export async function getRecipes(): Promise<Recipe[]> {
     throw new Error("Impossible de charger vos recettes. Vérifiez la configuration Supabase.");
   }
 
-  const recipes = readContract(data ?? [], recipeListSchema, "get_recipes");
+  const recipes = readContract(data, recipeListSchema, "get_recipes");
   return attachPhotoUrls(recipes, ownerId, client);
 }
 
@@ -107,7 +125,7 @@ export async function getRecipeSummaries(): Promise<RecipeSummary[]> {
     console.error("[recipes] Lecture des résumés de recettes impossible", { code: error.code });
     throw new Error("Impossible de charger les recettes disponibles.");
   }
-  return readContract(data ?? [], recipeSummaryListSchema, "get_recipe_summaries");
+  return readContract(data, recipeSummaryListSchema, "get_recipe_summaries");
 }
 
 export async function getCatalog(): Promise<Ingredient[]> {
@@ -117,7 +135,7 @@ export async function getCatalog(): Promise<Ingredient[]> {
     console.error("[recipes] Lecture du catalogue impossible", { code: error.code });
     throw new Error("Impossible de charger les ingrédients.");
   }
-  return readContract(data ?? [], ingredientListSchema, "ingredients");
+  return readContract(data, ingredientListSchema, "ingredients");
 }
 
 export async function getPreparation(): Promise<Preparation> {
@@ -127,11 +145,17 @@ export async function getPreparation(): Promise<Preparation> {
     console.error("[recipes] Lecture de la préparation impossible", { code: error.code });
     throw new Error("Impossible de charger les plats sélectionnés.");
   }
-  return readContract(
-    data ?? { revision: 0, selections: [] },
-    preparationSchema,
-    "get_preparation",
-  );
+  return readContract(data, preparationSchema, "get_preparation");
+}
+
+export async function getPreparationView(): Promise<PreparationViewData> {
+  const { client } = await authenticatedClient();
+  const { data, error } = await client.rpc("get_preparation_view");
+  if (error) {
+    console.error("[recipes] Lecture des plats impossible", { code: error.code });
+    throw new Error("Impossible de charger les plats à préparer.");
+  }
+  return readContract(data, preparationViewSchema, "get_preparation_view");
 }
 
 export async function getShoppingList(): Promise<ShoppingList | null> {

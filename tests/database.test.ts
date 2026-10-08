@@ -288,12 +288,14 @@ describe("migrations, droits et transactions PostgreSQL", () => {
       ...recipeArgs,
       p_id: id,
       p_expected_revision: initial[0].revision,
+      p_title: "Recette modifiée",
+      p_servings: 8,
       p_photo_action: "keep",
     });
     expect((await rpc<Recipe[]>(db, ACCOUNT, "get_recipes"))[0].photo_path).toBe(
       `${ACCOUNT}/photo.png`,
     );
-    expect((await rpc<ShoppingList>(db, ACCOUNT, "get_shopping_list")).id).toBe(list.id);
+    expect(await rpc<ShoppingList>(db, ACCOUNT, "get_shopping_list")).toEqual(list);
   });
 
   it("rejette une modification basée sur une ancienne révision", async () => {
@@ -324,6 +326,12 @@ describe("migrations, droits et transactions PostgreSQL", () => {
 
   it("détecte les générations périmées sans perdre les cases cochées", async () => {
     const list = await createList();
+    await rpc(db, ACCOUNT, "set_shopping_item_checked", {
+      p_id: list.items[0].id,
+      p_list_id: list.id,
+      p_checked: true,
+    });
+    const snapshot = await rpc<ShoppingList>(db, ACCOUNT, "get_shopping_list");
     const before = await rpc<Preparation>(db, ACCOUNT, "get_preparation");
     await rpc(db, ACCOUNT, "save_selection", {
       p_id: null,
@@ -346,6 +354,8 @@ describe("migrations, droits et transactions PostgreSQL", () => {
         p_items: aggregateShopping(after.selections),
       }),
     ).rejects.toThrow("LIST_CHANGED");
+    expect(await rpc<ShoppingList>(db, ACCOUNT, "get_shopping_list")).toEqual(snapshot);
+    expect(snapshot.items[0].checked).toBe(true);
   });
 
   it("refuse une révision nulle au lieu de contourner le contrôle", async () => {
@@ -392,6 +402,6 @@ describe("migrations, droits et transactions PostgreSQL", () => {
 
     expect(deleted).toEqual({ photo_path: `${ACCOUNT}/photo.png` });
     expect((await rpc<Preparation>(db, ACCOUNT, "get_preparation")).selections).toHaveLength(0);
-    expect((await rpc<ShoppingList>(db, ACCOUNT, "get_shopping_list")).id).toBe(list.id);
+    expect(await rpc<ShoppingList>(db, ACCOUNT, "get_shopping_list")).toEqual(list);
   });
 });

@@ -34,7 +34,8 @@ de l'interface ne remplacent pas les contrôles dans les actions et la base.
 
 Le navigateur emploie Supabase pour la session du canal Realtime et ses événements.
 `useRealtimeRefresh` porte le cycle de vie du canal ; `RealtimeRefresh` n'affiche
-que son état. Les lectures métier passent par le serveur ; les écritures de tables
+que son état. `realtime-controller.ts` porte une durée de vie de souscription
+injectable et testée, tandis que le hook décide de sa recréation. Les lectures métier passent par le serveur ; les écritures de tables
 passent par les RPC appelées depuis le serveur. Les réponses RPC sont validées à
 leur frontière avec Zod. Les photos passent par l'API Storage côté serveur : la
 RPC exprime l'intention de conserver, remplacer ou retirer la photo dans la même
@@ -52,7 +53,16 @@ aucune édition ou sauvegarde locale n'est en cours.
 La génération attend aussi les ajouts et retraits de plats déjà lancés. Dans le
 formulaire de recette, une saisie intacte accepte les données distantes ; si elle
 a été modifiée, une révision distante est signalée et doit être chargée explicitement
-avant d'écraser l'édition.
+avant de remplacer son brouillon. Les changements de rayon partagé versionnent
+aussi les recettes concernées. Les photos signées peuvent être renouvelées à
+révision identique, sans écraser une saisie locale.
+
+`recipe-draft.ts` transforme le brouillon en payload de création ou d'édition ;
+l'état du formulaire reste dans un seul propriétaire. Les helpers de
+`src/lib/server/` isolent les erreurs et les photos de l'orchestration des actions.
+La création utilise une identité stable et tente une réconciliation après perte
+de réponse. Les limites et compromis sont décrits dans la
+[décision dédiée](decisions/0002-revisions-et-reprise-des-recettes.md).
 
 `generateList` relit la préparation et sa révision, calcule les quantités avec
 `aggregateShopping`, puis appelle `replace_shopping_list`. Les nombres sont
@@ -79,4 +89,5 @@ une file d'attente hors ligne.
 Conserver les frontières ci-dessus tant qu'elles répondent au besoin. Une extraction
 doit clarifier une responsabilité réelle ; une nouvelle couche ou bibliothèque doit
 résoudre un problème concret. Les choix durables et leurs compromis sont conservés
-dans les [décisions d'architecture](decisions/0001-mutations-transactionnelles.md).
+dans les décisions sur les [mutations](decisions/0001-mutations-transactionnelles.md)
+et les [révisions/reprises](decisions/0002-revisions-et-reprise-des-recettes.md).

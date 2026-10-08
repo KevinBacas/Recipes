@@ -55,6 +55,8 @@ export type RecipeSummary = {
   ingredient_count: number;
 };
 export type PreparedRecipe = Pick<Recipe, "id" | "title" | "servings" | "ingredients">;
+export type SelectionSummary = { id: string; servings: number; recipe: RecipeSummary };
+export type PreparationViewData = { selections: SelectionSummary[]; active_list_id: string | null };
 export type Selection = { id: string; servings: number; recipe: PreparedRecipe };
 export type Preparation = { revision: number; selections: Selection[] };
 export type ShoppingItemInput = {
@@ -90,7 +92,7 @@ const recipeIngredientSchema = z.object({
 const preparedRecipeSchema = z.object({
   id: z.uuid(),
   title: z.string(),
-  servings: z.number().int().min(1).max(1000),
+  servings: z.number().int().min(SERVINGS_MIN).max(SERVINGS_MAX),
   ingredients: z.array(recipeIngredientSchema),
 });
 
@@ -109,7 +111,7 @@ export const preparationSchema = z.object({
   selections: z.array(
     z.object({
       id: z.uuid(),
-      servings: z.number().int().min(1).max(1000),
+      servings: z.number().int().min(SERVINGS_MIN).max(SERVINGS_MAX),
       recipe: preparedRecipeSchema,
     }),
   ),
@@ -118,10 +120,30 @@ export const recipeSummaryListSchema = z.array(
   z.object({
     id: z.uuid(),
     title: z.string(),
-    servings: z.number().int().min(1).max(1000),
+    servings: z.number().int().min(SERVINGS_MIN).max(SERVINGS_MAX),
     ingredient_count: z.number().int().nonnegative(),
   }),
 );
+export const preparationViewSchema = z.object({
+  selections: z.array(
+    z.object({
+      id: z.uuid(),
+      servings: z.number().int().min(SERVINGS_MIN).max(SERVINGS_MAX),
+      recipe: recipeSummaryListSchema.element,
+    }),
+  ),
+  active_list_id: z.uuid().nullable(),
+});
+export function parseServings(value: string): number | null {
+  const number = Number(value);
+  return value.trim() &&
+    Number.isInteger(number) &&
+    number >= SERVINGS_MIN &&
+    number <= SERVINGS_MAX
+    ? number
+    : null;
+}
+
 export const shoppingListSchema = z.object({
   id: z.uuid(),
   created_at: z.string(),
@@ -142,6 +164,7 @@ export const shoppingListSchema = z.object({
 export const saveRecipeResultSchema = z.object({
   id: z.uuid(),
   previous_photo_path: z.string().nullable(),
+  photo_path: z.string().nullable(),
 });
 export const deleteRecipeResultSchema = z.object({
   photo_path: z.string().nullable(),
@@ -158,9 +181,10 @@ const quantitySchema = z.preprocess(
 );
 export const recipeSchema = z.object({
   id: z.uuid().optional(),
-  revision: z.coerce.number().int().nonnegative().optional(),
+  revision: z.number().int().nonnegative().optional(),
+  creationId: z.uuid().optional(),
   title: z.string().trim().min(1, "Donnez un nom à cette recette.").max(120),
-  servings: z.coerce.number().int().min(1).max(1000),
+  servings: z.coerce.number().int().min(SERVINGS_MIN).max(SERVINGS_MAX),
   steps: z.array(z.string().trim().min(1).max(4000)).max(100),
   ingredients: z
     .array(
@@ -190,10 +214,9 @@ export const recipeSchema = z.object({
     .min(1, "Ajoutez au moins un ingrédient.")
     .max(200),
 });
-export type RecipeInput = z.input<typeof recipeSchema>;
 export const selectionSchema = z.object({
   recipeId: z.uuid(),
-  servings: z.coerce.number().int().min(1).max(1000),
+  servings: z.coerce.number().int().min(SERVINGS_MIN).max(SERVINGS_MAX),
 });
 
 export function normalizeIngredientName(value: string) {

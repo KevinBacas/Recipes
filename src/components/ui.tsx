@@ -103,7 +103,7 @@ export function ConfirmDialog({
           <button
             type="button"
             className={`button ${destructive ? "button-danger" : "button-primary"}`}
-            disabled={pending}
+            disabled={pending || disabled}
             onClick={() =>
               startTransition(async () => {
                 try {

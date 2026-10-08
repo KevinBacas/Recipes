@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import Decimal from "decimal.js";
 import { ArrowLeft, CalendarPlus, Check, CookingPot, Pencil, Trash2, Users } from "lucide-react";
 import { deleteRecipe, saveSelection } from "@/app/actions";
-import { formatAmount, SERVINGS_MAX, SERVINGS_MIN, type Recipe } from "@/lib/domain";
+import { formatAmount, parseServings, SERVINGS_MAX, SERVINGS_MIN, type Recipe } from "@/lib/domain";
 import { ConfirmDialog, ErrorMessage, Spinner } from "./ui";
 
 export function RecipeDetail({ recipe }: { recipe: Recipe }) {
@@ -15,9 +15,9 @@ export function RecipeDetail({ recipe }: { recipe: Recipe }) {
   const [error, setError] = useState("");
   const [added, setAdded] = useState(false);
   const [pending, startTransition] = useTransition();
-  const count = Number(servings);
-  const valid = Number.isInteger(count) && count > 0 && count <= 1000;
-  const ratio = new Decimal(valid ? count : recipe.servings).div(recipe.servings);
+  const count = parseServings(servings);
+  const valid = count !== null;
+  const ratio = new Decimal(count ?? recipe.servings).div(recipe.servings);
   return (
     <>
       <Link href="/recettes" className="back-link">

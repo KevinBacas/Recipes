@@ -13,14 +13,7 @@ import {
   type Unit,
 } from "@/lib/domain";
 
-export type IngredientLine = {
-  key: string;
-  ingredient_id?: string;
-  name: string;
-  aisle: Aisle;
-  quantity: string;
-  unit: Unit;
-};
+import type { IngredientLine } from "@/lib/recipe-draft";
 
 export function RecipeBasicsSection({
   title,

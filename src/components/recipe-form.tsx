@@ -7,34 +7,19 @@ import { Save } from "lucide-react";
 import { type Ingredient, type Recipe } from "@/lib/domain";
 import { saveRecipe } from "@/app/actions";
 import { ErrorMessage, Spinner } from "./ui";
+import { IngredientSection, RecipeBasicsSection, StepsSection } from "./recipe-form-sections";
+
 import {
-  IngredientSection,
-  RecipeBasicsSection,
-  StepsSection,
+  blankLine,
+  initialLines,
+  serializeRecipeDraft,
   type IngredientLine,
-} from "./recipe-form-sections";
-
-const blankLine = (key: string): IngredientLine => ({
-  key,
-  name: "",
-  aisle: "other",
-  quantity: "",
-  unit: "g",
-});
-
-function initialLines(recipe?: Recipe): IngredientLine[] {
-  return (
-    recipe?.ingredients.map((line, index) => ({
-      ...line,
-      quantity: line.quantity === null ? "" : String(line.quantity).replace(".", ","),
-      key: `line-${index}`,
-    })) ?? [blankLine("line-0")]
-  );
-}
+} from "@/lib/recipe-draft";
 
 export function RecipeForm({ recipe, catalog }: { recipe?: Recipe; catalog: Ingredient[] }) {
   const router = useRouter();
   const formId = useId();
+  const [creationId] = useState(() => crypto.randomUUID());
   const [title, setTitle] = useState(recipe?.title ?? "");
   const [servings, setServings] = useState(String(recipe?.servings ?? 2));
   const [lines, setLines] = useState<IngredientLine[]>(() => initialLines(recipe));
@@ -94,7 +79,9 @@ export function RecipeForm({ recipe, catalog }: { recipe?: Recipe; catalog: Ingr
     setRemovePhoto(false);
   }
 
-  const image = preview ?? (!removePhoto ? photoUrl : null);
+  const currentPhotoUrl =
+    (recipe?.revision ?? null) === draftRevision ? (recipe?.photo_url ?? null) : photoUrl;
+  const image = preview ?? (!removePhoto ? currentPhotoUrl : null);
 
   return (
     <form
@@ -106,20 +93,14 @@ export function RecipeForm({ recipe, catalog }: { recipe?: Recipe; catalog: Ingr
         const form = new FormData();
         form.set(
           "recipe",
-          JSON.stringify({
-            id: recipe?.id,
-            revision: draftRevision,
-            title,
-            servings,
-            steps: steps.filter((step) => step.trim()),
-            ingredients: lines.map(({ ingredient_id, name, aisle, quantity, unit }) => ({
-              ingredient_id,
-              name,
-              aisle,
-              quantity,
-              unit,
-            })),
-          }),
+          serializeRecipeDraft(
+            { title, servings, steps, lines },
+            {
+              id: recipe?.id,
+              revision: draftRevision,
+              creationId,
+            },
+          ),
         );
         form.set("removePhoto", String(removePhoto));
         if (photo) form.set("photo", photo);

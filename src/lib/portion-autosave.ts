@@ -1,4 +1,4 @@
-import { SERVINGS_MAX, SERVINGS_MIN, type ActionResult } from "./domain";
+import { parseServings, type ActionResult } from "./domain";
 
 type Save = (servings: number) => Promise<ActionResult>;
 export type PortionSnapshot = {
@@ -6,16 +6,6 @@ export type PortionSnapshot = {
   status: "saved" | "waiting" | "saving" | "invalid" | "error";
   error: string;
 };
-
-function parseServings(value: string): number | null {
-  const number = Number(value);
-  return value.trim() &&
-    Number.isInteger(number) &&
-    number >= SERVINGS_MIN &&
-    number <= SERVINGS_MAX
-    ? number
-    : null;
-}
 
 /** One ordered save queue per dish, shared by typing, blur and list generation. */
 export class PortionAutosave {

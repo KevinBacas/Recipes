@@ -1,5 +1,6 @@
 "use server";
 
+import { createHash } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
@@ -9,54 +10,15 @@ import {
   deleteRecipeResultSchema,
   preparationSchema,
   recipeSchema,
+  recipeRecordSchema,
   saveRecipeResultSchema,
   selectionSchema,
   type ActionResult,
 } from "@/lib/domain";
 import { isConfigured } from "@/lib/supabase/config";
 import { createClient } from "@/lib/supabase/server";
-
-function errorDetails(error: unknown) {
-  if (!error || typeof error !== "object") return { message: "", code: "UNKNOWN" };
-  const details = error as { message?: unknown; code?: unknown; name?: unknown };
-  return {
-    message: typeof details.message === "string" ? details.message : "",
-    code:
-      typeof details.code === "string"
-        ? details.code
-        : typeof details.name === "string"
-          ? details.name
-          : "UNKNOWN",
-  };
-}
-
-function databaseRejectedMutation(error: unknown) {
-  return /^(P\d{4}|23\d{3})$/.test(errorDetails(error).code);
-}
-
-function failure(error: unknown, operation: string): ActionResult<never> {
-  const { message, code } = errorDetails(error);
-  console.error(`[recipes] Échec de ${operation}`, { code });
-
-  if (message.includes("PLAN_CHANGED"))
-    return {
-      ok: false,
-      error: "Les plats ont changé sur un autre appareil. Actualisez la page puis réessayez.",
-    };
-  if (message.includes("LIST_CHANGED"))
-    return {
-      ok: false,
-      error: "La liste a changé sur un autre appareil. Actualisez la page avant de continuer.",
-    };
-  if (message.includes("RECIPE_CHANGED"))
-    return {
-      ok: false,
-      error: "Cette recette a été modifiée sur un autre appareil. Rechargez-la avant de continuer.",
-    };
-  if (message.includes("NOT_FOUND"))
-    return { ok: false, error: "Cet élément n’est plus disponible. Actualisez la page." };
-  return { ok: false, error: "L’enregistrement a échoué. Vérifiez votre connexion et réessayez." };
-}
+import { databaseRejectedMutation, errorDetails, failure } from "@/lib/server/action-errors";
+import { imageMime, removeRecipePhoto } from "@/lib/server/recipe-photos";
 
 function refresh() {
   revalidatePath("/recettes", "layout");
@@ -72,22 +34,6 @@ function refreshAfterMutation(operation: string) {
   }
 }
 
-async function removeRecipePhoto(
-  client: Awaited<ReturnType<typeof authenticatedClient>>["client"],
-  path: string,
-  operation: string,
-) {
-  try {
-    const { error } = await client.storage.from("recipe-photos").remove([path]);
-    if (error)
-      console.error(`[recipes] Nettoyage de photo impossible après ${operation}`, {
-        code: error.name,
-      });
-  } catch {
-    console.error(`[recipes] Nettoyage de photo impossible après ${operation}`);
-  }
-}
-
 export async function signIn(form: FormData): Promise<ActionResult> {
   if (!isConfigured()) return { ok: false, error: "Votre espace n’est pas encore configuré." };
 
@@ -100,12 +46,15 @@ export async function signIn(form: FormData): Promise<ActionResult> {
   try {
     const client = await createClient();
     const { error } = await client.auth.signInWithPassword(parsed.data);
-    if (error)
+    if (error) {
+      console.error("[recipes] Échec de la connexion", { code: errorDetails(error).code });
       return {
         ok: false,
         error: "Connexion impossible. Vérifiez votre email et votre mot de passe.",
       };
-  } catch {
+    }
+  } catch (error) {
+    console.error("[recipes] Connexion indisponible", { code: errorDetails(error).code });
     return {
       ok: false,
       error: "Connexion impossible pour le moment. Réessayez dans quelques instants.",
@@ -117,26 +66,20 @@ export async function signIn(form: FormData): Promise<ActionResult> {
 
 export async function signOut(): Promise<ActionResult> {
   const { client } = await authenticatedClient();
-  const { error } = await client.auth.signOut({ scope: "local" });
-  if (error) {
-    console.error("[recipes] Échec de la déconnexion", { code: errorDetails(error).code });
+  try {
+    const { error } = await client.auth.signOut({ scope: "local" });
+    if (error) {
+      console.error("[recipes] Échec de la déconnexion", { code: errorDetails(error).code });
+      return {
+        ok: false,
+        error: "Déconnexion impossible. Vérifiez votre connexion puis réessayez.",
+      };
+    }
+  } catch (error) {
+    console.error("[recipes] Déconnexion indisponible", { code: errorDetails(error).code });
     return { ok: false, error: "Déconnexion impossible. Vérifiez votre connexion puis réessayez." };
   }
   redirect("/connexion");
-}
-
-function imageMime(bytes: Uint8Array): { mime: string; extension: string } | null {
-  if (bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff)
-    return { mime: "image/jpeg", extension: "jpg" };
-  if ([137, 80, 78, 71, 13, 10, 26, 10].every((byte, index) => bytes[index] === byte))
-    return { mime: "image/png", extension: "png" };
-  if (
-    new TextDecoder().decode(bytes.slice(0, 4)) === "RIFF" &&
-    new TextDecoder().decode(bytes.slice(8, 12)) === "WEBP"
-  ) {
-    return { mime: "image/webp", extension: "webp" };
-  }
-  return null;
 }
 
 export async function saveRecipe(form: FormData): Promise<ActionResult<{ id: string }>> {
@@ -157,8 +100,16 @@ export async function saveRecipe(form: FormData): Promise<ActionResult<{ id: str
     return { ok: false, error: "Rechargez cette recette avant de l’enregistrer." };
   }
 
+  if (
+    (!parsed.data.id && (!parsed.data.creationId || parsed.data.revision !== undefined)) ||
+    (parsed.data.id && parsed.data.creationId)
+  ) {
+    return { ok: false, error: "Rechargez le formulaire avant de l’enregistrer." };
+  }
   const { client, ownerId } = await authenticatedClient();
   let uploadedPath: string | null = null;
+  let mutationAttempted = false;
+  let photoHash: string | null = null;
 
   try {
     const photo = form.get("photo");
@@ -168,6 +119,7 @@ export async function saveRecipe(form: FormData): Promise<ActionResult<{ id: str
 
       const bytes = new Uint8Array(await photo.arrayBuffer());
       const detected = imageMime(bytes);
+      photoHash = createHash("sha256").update(bytes).digest("hex");
       if (!detected) return { ok: false, error: "Choisissez une photo JPG, PNG ou WebP." };
 
       uploadedPath = `${ownerId}/${crypto.randomUUID()}.${detected.extension}`;
@@ -183,8 +135,11 @@ export async function saveRecipe(form: FormData): Promise<ActionResult<{ id: str
       : form.get("removePhoto") === "true"
         ? "remove"
         : "keep";
+    mutationAttempted = true;
     const { data, error } = await client.rpc("save_recipe", {
       p_id: parsed.data.id ?? null,
+      p_creation_id: parsed.data.creationId ?? null,
+      p_photo_hash: photoHash,
       p_expected_revision: parsed.data.revision ?? null,
       p_title: parsed.data.title,
       p_servings: parsed.data.servings,
@@ -199,6 +154,7 @@ export async function saveRecipe(form: FormData): Promise<ActionResult<{ id: str
         await removeRecipePhoto(client, uploadedPath, "annulation confirmée de l’enregistrement");
       }
       // A lost response does not prove the transaction rolled back; keep the uploaded object.
+      if (!databaseRejectedMutation(error)) return reconcileUncertainSave(error);
       return failure(error, "l’enregistrement de la recette");
     }
 
@@ -212,14 +168,57 @@ export async function saveRecipe(form: FormData): Promise<ActionResult<{ id: str
     }
 
     const previousPath = saved.data.previous_photo_path;
-    if (previousPath && previousPath !== uploadedPath && previousPath.startsWith(`${ownerId}/`)) {
+    if (
+      previousPath &&
+      previousPath !== saved.data.photo_path &&
+      previousPath.startsWith(`${ownerId}/`)
+    ) {
       await removeRecipePhoto(client, previousPath, "remplacement de photo");
     }
 
+    // A repeated creation may have uploaded a second object; SQL identifies the original photo.
+    if (uploadedPath && uploadedPath !== saved.data.photo_path) {
+      await removeRecipePhoto(client, uploadedPath, "reprise d’une création déjà enregistrée");
+    }
     refreshAfterMutation("l’enregistrement de la recette");
     return { ok: true, data: { id: saved.data.id } };
   } catch (error) {
+    if (mutationAttempted) return reconcileUncertainSave(error);
     return failure(error, "l’enregistrement de la recette");
+  }
+
+  async function reconcileUncertainSave(error: unknown): Promise<ActionResult<{ id: string }>> {
+    console.error("[recipes] Résultat d’enregistrement indéterminé", {
+      code: errorDetails(error).code,
+    });
+    if (parsed.success && parsed.data.creationId) {
+      try {
+        const { data, error: readError } = await client.rpc("get_recipe", {
+          p_id: parsed.data.creationId,
+        });
+        const recovered = recipeRecordSchema.safeParse(data);
+        if (!readError && recovered.success) {
+          if (uploadedPath && uploadedPath !== recovered.data.photo_path) {
+            await removeRecipePhoto(client, uploadedPath, "reprise de création");
+          }
+          refreshAfterMutation("la récupération de la recette");
+          return { ok: true, data: { id: recovered.data.id } };
+        }
+      } catch (readError) {
+        console.error("[recipes] Réconciliation indisponible", {
+          code: errorDetails(readError).code,
+        });
+      }
+      return {
+        ok: false,
+        error:
+          "La création a peut-être réussi. Réessayez sans modifier le formulaire pour retrouver la même recette, ou rechargez le carnet.",
+      };
+    }
+    return {
+      ok: false,
+      error: "La recette a peut-être été enregistrée. Rechargez-la avant de réessayer.",
+    };
   }
 }
 

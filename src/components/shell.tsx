@@ -28,8 +28,12 @@ function LogoutButton({ mobile = false }: { mobile?: boolean }) {
         onClick={() =>
           startTransition(async () => {
             setError("");
-            const result = await signOut();
-            if (!result.ok) setError(result.error);
+            try {
+              const result = await signOut();
+              if (!result.ok) setError(result.error);
+            } catch {
+              setError("Déconnexion impossible. Vérifiez votre connexion puis réessayez.");
+            }
           })
         }
       >

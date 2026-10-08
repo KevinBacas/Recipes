@@ -1,7 +1,7 @@
 import { test, expect, type Page } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
 import type { AppDatabase } from "../../src/lib/supabase/database";
-import type { Recipe } from "../../src/lib/domain";
+import { recipeListSchema } from "../../src/lib/domain";
 
 const email = process.env.E2E_EMAIL;
 const password = process.env.E2E_PASSWORD;
@@ -37,7 +37,7 @@ test.beforeEach(async () => {
   const client = await clientForCleanup();
   const { data, error } = await client.rpc("get_recipes");
   if (error) throw error;
-  for (const recipe of (data ?? []) as unknown as Recipe[]) {
+  for (const recipe of recipeListSchema.parse(data)) {
     if (recipe.photo_path) await client.storage.from("recipe-photos").remove([recipe.photo_path]);
     const { error } = await client.rpc("delete_recipe", { p_id: recipe.id });
     if (error) throw error;
@@ -75,16 +75,14 @@ async function createRecipe(
     .getByLabel("Étape 1", { exact: true })
     .fill("Mélanger les ingrédients, puis faire cuire.");
   if (withPhoto)
-    await page
-      .getByLabel("Photo de la recette", { exact: true })
-      .setInputFiles({
-        name: "test.png",
-        mimeType: "image/png",
-        buffer: Buffer.from(
-          "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a5r8AAAAASUVORK5CYII=",
-          "base64",
-        ),
-      });
+    await page.getByLabel("Photo de la recette", { exact: true }).setInputFiles({
+      name: "test.png",
+      mimeType: "image/png",
+      buffer: Buffer.from(
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a5r8AAAAASUVORK5CYII=",
+        "base64",
+      ),
+    });
   await page.getByRole("button", { name: "Enregistrer la recette", exact: true }).click();
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(title);
   return new URL(page.url()).pathname;
@@ -175,6 +173,13 @@ test("recettes → portions → courses partagées, conservation et remplacement
   await page.getByLabel("Quantité", { exact: true }).nth(0).fill("1000");
   await page.getByRole("button", { name: "Enregistrer la recette", exact: true }).click();
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Crêpes maison");
+  await expect
+    .poll(() =>
+      page
+        .getByAltText("Crêpes maison")
+        .evaluate((image) => (image as HTMLImageElement).naturalWidth),
+    )
+    .toBeGreaterThan(0);
   await navigate(page, "Courses");
   await expect(page.getByRole("checkbox", { name: "Farine, 750 g", exact: true })).toBeChecked();
   await expect(page.getByText("Partagé entre vos appareils", { exact: true })).toBeVisible();
@@ -353,13 +358,108 @@ test("portions automatiques et recettes partagées entre deux sessions", async (
   await expect(localTitle).toHaveValue("Soupe distante");
   await navigate(page, "Recettes");
   await page.getByRole("link", { name: /Soupe distante/ }).click();
+  await navigate(secondPage, "Recettes");
   await page.getByRole("button", { name: "Supprimer la recette", exact: true }).click();
   await page.getByRole("dialog").getByRole("button", { name: "Supprimer", exact: true }).click();
   await expect(
-    secondPage.getByRole("heading", { name: "Soupe partagée", exact: true }),
+    secondPage.getByRole("heading", { name: "Soupe distante", exact: true }),
   ).toHaveCount(0);
   await expect(
     secondPage.getByText("Notre carnet est encore tout neuf.", { exact: true }),
   ).toBeVisible();
   await secondContext.close();
+});
+
+test("un formulaire intact suit la recette distante et garde sa photo après édition", async ({
+  page,
+  browser,
+}) => {
+  await login(page);
+  const recipeUrl = await createRecipe(page, "Recette intacte", "500", "g", "250", "ml", 4, true);
+  const context = await browser.newContext({ baseURL: new URL(page.url()).origin });
+  try {
+    const remote = await context.newPage();
+    await login(remote);
+    await page.goto(`${recipeUrl}/modifier`);
+    await remote.goto(`${recipeUrl}/modifier`);
+    await remote.getByLabel("Nom de la recette", { exact: true }).fill("Version distante");
+    await remote.getByRole("button", { name: "Enregistrer la recette", exact: true }).click();
+    await expect(remote.getByRole("heading", { level: 1 })).toHaveText("Version distante");
+    await expect(page.getByLabel("Nom de la recette", { exact: true })).toHaveValue(
+      "Version distante",
+    );
+    await expect(page.getByRole("alert")).toHaveCount(0);
+    await expect
+      .poll(() =>
+        remote
+          .getByAltText("Version distante")
+          .evaluate((image) => (image as HTMLImageElement).naturalWidth),
+      )
+      .toBeGreaterThan(0);
+    await page.getByLabel("Étape 1", { exact: true }).fill("Laisser reposer, puis cuire.");
+    await page.getByRole("button", { name: "Enregistrer la recette", exact: true }).click();
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Version distante");
+    await expect
+      .poll(() =>
+        page
+          .getByAltText("Version distante")
+          .evaluate((image) => (image as HTMLImageElement).naturalWidth),
+      )
+      .toBeGreaterThan(0);
+  } finally {
+    await context.close();
+  }
+});
+
+test("un retrait en cours bloque la génération avec une liste existante et sa confirmation", async ({
+  page,
+}) => {
+  await login(page);
+  await createRecipe(page, "Plat à retirer", "500", "g", "250", "ml", 4);
+  await page.getByRole("button", { name: "Prévoir ce plat", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Plat ajouté", exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Plat ajouté", exact: true }).click();
+  await navigate(page, "Préparer");
+  await expect(
+    page.getByRole("heading", { name: "2 plats à préparer", exact: true }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Générer les courses", exact: true }).click();
+  if (await page.getByRole("dialog").isVisible())
+    await page.getByRole("button", { name: "Générer la nouvelle liste", exact: true }).click();
+  await expect(page).toHaveURL(/\/courses$/);
+  await navigate(page, "Préparer");
+  let release!: () => void;
+  let entered!: () => void;
+  const held = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const started = new Promise<void>((resolve) => {
+    entered = resolve;
+  });
+  await page.route("**/preparer", async (route) => {
+    if (route.request().method() === "POST") {
+      entered();
+      await held;
+    }
+    await route.continue();
+  });
+  try {
+    await page.getByRole("button", { name: "Retirer Plat à retirer", exact: true }).first().click();
+    await started;
+    await expect(
+      page.getByRole("button", { name: "Générer les courses", exact: true }),
+    ).toBeDisabled();
+    release();
+    await expect(
+      page.getByRole("heading", { name: "1 plat à préparer", exact: true }),
+    ).toBeVisible();
+  } finally {
+    release();
+    await page.unroute("**/preparer");
+  }
+  await page.getByRole("button", { name: "Générer les courses", exact: true }).click();
+  await expect(page.getByRole("dialog", { name: "Remplacer la liste de courses ?" })).toBeVisible();
+  await page.getByRole("button", { name: "Générer la nouvelle liste", exact: true }).click();
+  await expect(page).toHaveURL(/\/courses$/);
+  await expect(page.getByRole("checkbox", { name: "Farine, 250 g", exact: true })).toBeVisible();
 });

@@ -11,7 +11,13 @@ import {
 } from "react";
 import { CalendarPlus, Check, Plus, ShoppingBasket, Trash2, Users, CookingPot } from "lucide-react";
 import { saveSelection, deleteSelection, generateList } from "@/app/actions";
-import type { ActionResult, RecipeSummary, Selection } from "@/lib/domain";
+import {
+  SERVINGS_MIN,
+  SERVINGS_MAX,
+  type ActionResult,
+  type RecipeSummary,
+  type SelectionSummary,
+} from "@/lib/domain";
 import { PortionAutosave } from "@/lib/portion-autosave";
 import { ConfirmDialog, EmptyState, ErrorMessage, Spinner } from "./ui";
 
@@ -24,7 +30,7 @@ function SelectedDish({
   trackOperation,
   disabled,
 }: {
-  selection: Selection;
+  selection: SelectionSummary;
   register: RegisterAutosave;
   trackOperation: TrackOperation;
   disabled: boolean;
@@ -71,7 +77,7 @@ function SelectedDish({
         </span>
         <div>
           <Link href={`/recettes/${selection.recipe.id}`}>{selection.recipe.title}</Link>
-          <span>{selection.recipe.ingredients.length} ingrédients</span>
+          <span>{selection.recipe.ingredient_count} ingrédients</span>
         </div>
         <button
           type="button"
@@ -93,8 +99,8 @@ function SelectedDish({
           <input
             name="servings"
             type="number"
-            min="1"
-            max="1000"
+            min={SERVINGS_MIN}
+            max={SERVINGS_MAX}
             step="1"
             inputMode="numeric"
             value={draft.value}
@@ -156,7 +162,7 @@ export function PreparationView({
   activeListId,
 }: {
   recipes: RecipeSummary[];
-  selections: Selection[];
+  selections: SelectionSummary[];
   activeListId: string | null;
 }) {
   const router = useRouter();
@@ -193,6 +199,29 @@ export function PreparationView({
         error: "Vérifiez les portions de chaque plat avant de générer les courses.",
       };
     return generateList(activeListId);
+  };
+  const addRecipe = (recipeId: string) => {
+    setError("");
+    startTransition(async () => {
+      try {
+        const result = await trackOperation(() => saveSelection({ recipeId, servings: 2 }));
+        if (!result.ok) setError(result.error);
+      } catch {
+        setError("Le plat n’a pas pu être ajouté. Réessayez.");
+      }
+    });
+  };
+  const generateAndNavigate = () => {
+    setError("");
+    startTransition(async () => {
+      try {
+        const result = await generate();
+        if (!result.ok) setError(result.error);
+        else router.push("/courses");
+      } catch {
+        setError("La liste n’a pas pu être générée. Réessayez.");
+      }
+    });
   };
   return (
     <>
@@ -242,19 +271,7 @@ export function PreparationView({
                     className="button button-secondary small"
                     disabled={pending || pendingOperations > 0}
                     aria-label={`Ajouter ${recipe.title} aux plats`}
-                    onClick={() => {
-                      setError("");
-                      startTransition(async () => {
-                        try {
-                          const result = await trackOperation(() =>
-                            saveSelection({ recipeId: recipe.id, servings: 2 }),
-                          );
-                          if (!result.ok) setError(result.error);
-                        } catch {
-                          setError("Le plat n’a pas pu être ajouté. Réessayez.");
-                        }
-                      });
-                    }}
+                    onClick={() => addRecipe(recipe.id)}
                   >
                     <Plus size={17} />
                     <span>Ajouter</span>
@@ -320,18 +337,7 @@ export function PreparationView({
                   type="button"
                   className="button button-primary full-width"
                   disabled={!selections.length || pending || pendingOperations > 0}
-                  onClick={() => {
-                    setError("");
-                    startTransition(async () => {
-                      try {
-                        const result = await generate();
-                        if (!result.ok) setError(result.error);
-                        else router.push("/courses");
-                      } catch {
-                        setError("La liste n’a pas pu être générée. Réessayez.");
-                      }
-                    });
-                  }}
+                  onClick={generateAndNavigate}
                 >
                   {pending ? <Spinner /> : <ShoppingBasket size={18} />}Générer les courses
                 </button>

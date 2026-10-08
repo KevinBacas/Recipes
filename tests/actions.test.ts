@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { deleteRecipe, saveRecipe, signOut } from "@/app/actions";
+import { deleteRecipe, saveRecipe, signIn, signOut } from "@/app/actions";
 
 const mocks = vi.hoisted(() => ({
   authenticatedClient: vi.fn(),
@@ -31,6 +31,7 @@ function recipeForm(
     JSON.stringify({
       id: options.id,
       revision: options.revision,
+      creationId: options.id ? undefined : recipeId,
       title: "Crêpes",
       servings: 4,
       steps: [],
@@ -54,16 +55,24 @@ describe("Server Actions de recettes", () => {
   const upload = vi.fn();
   const rpc = vi.fn();
   const signOutRequest = vi.fn();
+  const signInRequest = vi.fn();
 
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.revalidatePath.mockReset();
     remove.mockResolvedValue({ data: [], error: null });
     upload.mockResolvedValue({ data: {}, error: null });
-    rpc.mockResolvedValue({ data: { id: recipeId, previous_photo_path: null }, error: null });
+    rpc.mockImplementation(async (name: string, args: Record<string, unknown>) => ({
+      data:
+        name === "get_recipe"
+          ? null
+          : { id: recipeId, previous_photo_path: null, photo_path: args.p_photo_path ?? null },
+      error: null,
+    }));
     signOutRequest.mockResolvedValue({ error: null });
 
     const client = {
-      auth: { signOut: signOutRequest },
+      auth: { signOut: signOutRequest, signInWithPassword: signInRequest },
       rpc,
       storage: { from: () => ({ upload, remove }) },
     };
@@ -72,10 +81,14 @@ describe("Server Actions de recettes", () => {
   });
 
   it("ne lit plus l'ancienne photo avant la RPC et transmet l'intention de remplacement", async () => {
-    rpc.mockResolvedValueOnce({
-      data: { id: recipeId, previous_photo_path: `${ownerId}/ancienne.png` },
+    rpc.mockImplementationOnce(async (_name, args) => ({
+      data: {
+        id: recipeId,
+        previous_photo_path: `${ownerId}/ancienne.png`,
+        photo_path: args.p_photo_path,
+      },
       error: null,
-    });
+    }));
     const result = await saveRecipe(recipeForm({ id: recipeId, revision: 3, photo: true }));
 
     expect(result).toEqual({ ok: true, data: { id: recipeId } });
@@ -101,10 +114,14 @@ describe("Server Actions de recettes", () => {
   });
 
   it("retire l'ancienne photo seulement lorsque la RPC confirme sa suppression", async () => {
-    rpc.mockResolvedValueOnce({
-      data: { id: recipeId, previous_photo_path: `${ownerId}/ancienne.png` },
+    rpc.mockImplementationOnce(async (_name, args) => ({
+      data: {
+        id: recipeId,
+        previous_photo_path: `${ownerId}/ancienne.png`,
+        photo_path: args.p_photo_path,
+      },
       error: null,
-    });
+    }));
     const result = await saveRecipe(recipeForm({ id: recipeId, revision: 1, removePhoto: true }));
 
     expect(result.ok).toBe(true);
@@ -128,14 +145,19 @@ describe("Server Actions de recettes", () => {
     const result = await saveRecipe(recipeForm({ photo: true }));
 
     expect(result.ok).toBe(false);
+    expect(result).toMatchObject({ error: expect.stringContaining("peut-être") });
     expect(remove).not.toHaveBeenCalled();
   });
 
   it("retourne un succès même si le nettoyage Storage échoue après le commit", async () => {
-    rpc.mockResolvedValueOnce({
-      data: { id: recipeId, previous_photo_path: `${ownerId}/ancienne.png` },
+    rpc.mockImplementationOnce(async (_name, args) => ({
+      data: {
+        id: recipeId,
+        previous_photo_path: `${ownerId}/ancienne.png`,
+        photo_path: args.p_photo_path,
+      },
       error: null,
-    });
+    }));
     remove.mockResolvedValueOnce({ data: null, error: { name: "StorageError" } });
 
     expect(await saveRecipe(recipeForm({ id: recipeId, revision: 0, photo: true }))).toEqual({
@@ -157,4 +179,40 @@ describe("Server Actions de recettes", () => {
       error: expect.stringContaining("Déconnexion impossible"),
     });
   });
+  it("affiche un échec lorsque le transport de déconnexion lève une exception", async () => {
+    signOutRequest.mockRejectedValueOnce(new TypeError("offline"));
+    expect(await signOut()).toMatchObject({
+      ok: false,
+      error: expect.stringContaining("Déconnexion impossible"),
+    });
+  });
+  it("ne nettoie jamais un chemin encore final, même si le résultat annonce un ancien chemin", async () => {
+    rpc.mockResolvedValueOnce({
+      data: {
+        id: recipeId,
+        previous_photo_path: `${ownerId}/active.png`,
+        photo_path: `${ownerId}/active.png`,
+      },
+      error: null,
+    });
+    expect(await saveRecipe(recipeForm({ id: recipeId, revision: 0 }))).toMatchObject({ ok: true });
+    expect(remove).not.toHaveBeenCalled();
+  });
+  it.each([false, true])(
+    "conserve un diagnostic sûr de connexion, transport=%s",
+    async (transport) => {
+      const log = vi.spyOn(console, "error").mockImplementation(() => {});
+      const error = { code: "AUTH_UNAVAILABLE", message: "contenu privé" };
+      if (transport) signInRequest.mockRejectedValueOnce(error);
+      else signInRequest.mockResolvedValueOnce({ error });
+      const form = new FormData();
+      form.set("email", "test@example.com");
+      form.set("password", "mot-de-passe-prive");
+      expect(await signIn(form)).toMatchObject({ ok: false });
+      expect(log).toHaveBeenCalledWith(expect.any(String), { code: "AUTH_UNAVAILABLE" });
+      expect(JSON.stringify(log.mock.calls)).not.toContain("prive");
+      expect(JSON.stringify(log.mock.calls)).not.toContain("privé");
+      log.mockRestore();
+    },
+  );
 });

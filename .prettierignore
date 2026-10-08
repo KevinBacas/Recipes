@@ -1,0 +1,8 @@
+node_modules/
+.next/
+.agents/
+src/lib/supabase/database.types.ts
+supabase/migrations/
+playwright-report/
+test-results/
+package-lock.json

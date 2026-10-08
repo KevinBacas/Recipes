@@ -42,6 +42,37 @@ démarrer le serveur local. Vérifier la cible avant un test qui écrit des donn
 Un résultat local réussi ne prouve ni une migration distante ni un déploiement.
 Dans le bilan, préciser les contrôles exécutés et les limites de l'environnement.
 
+## Formatage et concurrence PostgreSQL
+
+`npm run format` et `npm run format:check` utilisent la version de Prettier du
+lockfile. `npm run check` inclut le contrôle de formatage. Les skills copiés, le
+snapshot des types générés et les migrations sont exclus du formatage automatique.
+Les nouvelles migrations sont mises en forme à la main ; les migrations appliquées
+restent immuables. Séparer une remise en forme mécanique des changements de logique.
+
+`npm run test:postgres` démarre un conteneur PostgreSQL 17 temporaire si Docker est
+disponible, puis le retire, même en cas d'échec. Il ne monte aucun volume de données.
+Pour utiliser un autre PostgreSQL **local isolé**, créer une base vide dédiée et
+fournir `TEST_POSTGRES_URL`, par exemple :
+
+```sh
+TEST_POSTGRES_URL=postgresql://postgres:mot-de-passe-local@127.0.0.1:55439/recipes_test_review npm run test:postgres
+```
+
+Le script refuse les hôtes distants et les noms qui ne commencent pas par
+`recipes_test_`. La suite refuse une base contenant déjà des tables métier. Les
+rôles Auth et Storage sont des doublures minimales ; les tests observent un blocage
+réel dans `pg_stat_activity`, puis vérifient la révision, la reprise d'une création
+et l'instantané complet après déblocage. Cette suite distincte n'est pas lancée
+par `npm run check`, afin de ne pas imposer Docker pour chaque modification.
+Elle doit être exécutée pour une modification des verrous ou des RPC concernées.
+
+Les tests d'actions de contrat relient le payload sérialisé du formulaire aux
+migrations PGlite et à un Storage simulé. Les tests de lectures passent les vraies
+réponses SQL dans les schémas Zod ; les valeurs invalides doivent être rejetées,
+et seules les absences prévues par le contrat sont acceptées. Une erreur de service
+ne doit pas être transformée silencieusement en liste vide.
+
 ## Skills du bundle 2
 
 Les six skills sont stockés en fichiers réels dans `.agents/skills/`, pour être

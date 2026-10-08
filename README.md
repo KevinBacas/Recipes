@@ -107,7 +107,16 @@ npm test
 npm run build
 ```
 
-Les tests de calcul et de droits utilisent un PostgreSQL isolé via PGlite. Ils appliquent la migration réelle et vérifient les transactions, les accès anonymes et entre comptes, les photos, la stabilité des instantanés et les remplacements concurrents.
+Les tests locaux appliquent les migrations réelles dans PGlite et vérifient les
+calculs, les droits, les instantanés, les contrats JSON et les actions avec Storage
+simulé. Ils comprennent des entrelacements contrôlés d'actions, mais ne prouvent
+pas à eux seuls le verrou entre connexions PostgreSQL.
+
+`npm run test:postgres` vérifie ce verrou sur une base PostgreSQL locale vide et
+isolée, avec plusieurs connexions. Sans configuration, le script crée puis détruit
+un conteneur Docker PostgreSQL 17 ; avec `TEST_POSTGRES_URL`, il exige une base locale
+nommée `recipes_test_*`. Voir le [guide de développement](docs/development.md).
+`npm run format:check` contrôle le formatage reproductible des sources maintenues.
 
 Les tests navigateur utilisent un **compte Supabase de test isolé** et la base réelle. Ils suppriment les recettes de ce compte avant chaque scénario. Ne jamais utiliser le compte du foyer. Créer `.env.e2e.local`, ignoré par Git :
 
@@ -122,7 +131,9 @@ npm run build
 npm run test:e2e
 ```
 
-Les scénarios couvrent la création avec photo, les portions automatiques, les saisies pendant une requête lente, l’attente des ajouts avant génération, deux sessions simultanées, le partage des créations et suppressions, la persistance après actualisation, la récupération après une coupure réseau, l’échec d’enregistrement et sa reprise, le conflit de modification d’une recette, la confirmation et le remplacement de liste. Chrome et WebKit mobile sont vérifiés. Pour tester une URL déployée, définir `E2E_BASE_URL`.
+Les scénarios couvrent la création avec photo, les portions automatiques, les saisies pendant une requête lente, l’attente des ajouts avant génération, deux sessions simultanées, le partage des créations et suppressions, la persistance après actualisation, la récupération après une coupure réseau, l’échec d’enregistrement et sa reprise, le conflit de modification d’une recette, la confirmation et le remplacement de liste. Ces scénarios sont configurés pour Chrome et WebKit mobile ; leur présence ou
+leur listing ne constitue pas une exécution réussie. Le bilan de validation de la
+PR précise les exécutions effectivement réalisées. Pour tester une URL déployée, définir `E2E_BASE_URL`.
 
 ## Première version
 

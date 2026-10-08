@@ -303,31 +303,42 @@ de conflit. Aucun déploiement n'est inclus dans ce plan.
 - Aucun contrôle du déploiement, des logs distants ou de la configuration Auth
   hébergée ; aucune mesure de performance ni preuve de verrou multi-connexion.
 
-## Mise en œuvre de la PR
+## Mise en œuvre après la review de la PR — 8 octobre 2026
 
-- R1/R2 : le contrat SQL transporte l'intention photo dans la transaction, les
-  éditions vérifient une révision de recette et le nettoyage Storage ne traite
-  qu'un rollback confirmé. La suppression retourne aussi le chemin de la photo
-  réellement supprimée. Des tests d'actions couvrent les réponses perdues, le
-  refus SQL, le nettoyage en échec et la déconnexion refusée.
-- R3/R4 : les sections du formulaire et le contrôleur Realtime sont séparés de
-  leur orchestration ou affichage. Le CSS global a été remis en forme. La suite
-  n'ajoute pas de dépendance de formatage ; certains composants préexistants
-  restent à mettre en forme dans un lot mécanique ultérieur.
-- R5/R7/R8 : les réponses de lecture sont décodées avec Zod, les étapes SQL NULL
-  sont refusées, les fixtures SQL sont autonomes et 8 tests d'actions ont été
-  ajoutés. Les erreurs de service conservent un code technique non sensible.
-- R6 : la révision du formulaire détecte les modifications distantes sans perdre
-  un brouillon local ; l'E2E correspondant est ajouté mais nécessite le compte de
-  test isolé pour s'exécuter.
-- R9/R10 : les pages de détail et d'édition chargent une recette ciblée ; la
-  préparation reçoit des résumés ; les limites de portions et la normalisation
-  des ingrédients sont centralisées côté TypeScript.
-- Préparation : la génération attend les ajouts/retraits en cours en plus des
-  sauvegardes de portions ; un scénario E2E vérifie ce blocage.
+La première mise en œuvre contenait deux régressions : une édition conservant sa
+photo supprimait son objet Storage, et la création sérialisait une révision NULL
+convertie en zéro puis refusée par SQL. Les tests d'actions initiaux ne reproduisaient
+pas ces contrats. Le bilan ci-dessous remplace les affirmations trop larges de
+cette première version.
 
-Validation de cette mise en œuvre : `npm run check` passe, soit ESLint, TypeScript,
-58 tests Vitest et le build Next.js. `npm run test:e2e -- --list` confirme les
-quatre scénarios prévus pour Chrome et WebKit mobile. Les scénarios Playwright et
-une concurrence PostgreSQL multi-connexion ne sont pas exécutés :
-aucun compte de test isolé n'est configuré, et PGlite ne remplace pas ce contrôle.
+| Référence | Correction et preuve locale                                                                                                                                                                                                                               |
+| --------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| R1        | Identité stable de création, empreinte de demande, réconciliation après réponse perdue et reprise sans doublon ; upload conservé si le résultat reste indéterminé. Tests action/SQL et création simultanée PostgreSQL.                                    |
+| R2        | Intention photo transactionnelle, chemin final distinct du chemin détaché ; aucune suppression pour `keep`. Tests sur les objets Storage simulés, texte retardé, remplacement/retrait et suppression pendant upload.                                      |
+| R3        | Formatage mécanique dans un commit distinct, Prettier épinglé et contrôle dans `npm run check`. Composants précédemment compacts remis en forme, CSS organisé par sections ; copies officielles, types générés et migrations exclus.                      |
+| R4        | Sections, transformation de brouillon, helpers serveur et contrôleur Realtime séparés. Tests de nettoyage, callbacks tardifs, authentification, reconnexion et debounce. Attente des ajouts/retraits conservée ; E2E de retrait avec remplacement ajouté. |
+| R5        | Réponses obligatoires validées sans valeur vide de substitution ; schémas Zod testés contre les vraies RPC. Étapes NULL interdites et anciennes valeurs réparées avec conservation de l'ordre. Création testée depuis le payload réel du formulaire.      |
+| R6        | Brouillon intact réconcilié, saisie locale conservée avec conflit, révisions des recettes utilisant un rayon partagé invalidées. URL signée renouvelée à révision identique. E2E du formulaire intact ajouté et scénario de suppression corrigé.          |
+| R7        | Fixtures autonomes, assertions complètes sur les instantanés et coches rétablies. Entrelacements d'actions et tests PostgreSQL avec deux connexions, observation du blocage et refus après déblocage.                                                     |
+| R8        | Diagnostics sûrs des erreurs retournées et exceptions Auth/Storage ; erreurs de signature par fichier distinguées des photos absentes. Nettoyage et revalidation ne changent pas le succès métier.                                                        |
+| R9        | Détail/édition ciblés ; résumés pour les plats disponibles ; projection dédiée des sélections et seul ID de liste active. Les ingrédients complets restent réservés au calcul serveur.                                                                    |
+| R10       | Limites de portions utilisées dans Zod, les champs HTML, le détail et l'autosave ; validation TypeScript commune. Tests des bornes SQL/TS et de normalisation ; exports inutilisés retirés.                                                               |
+
+Les contrats, la transition schéma/application et la portée des tests sont décrits
+dans les documents propriétaires. La [décision sur les conflits et reprises](../decisions/0002-revisions-et-reprise-des-recettes.md)
+explique les limites de l'identité de création et de la conservation prudente des
+uploads. Les migrations déjà présentes n'ont pas été réécrites.
+
+### Validation de cette correction
+
+- `npm run check` : **réussi**, avec formatage, lint sans avertissement, TypeScript,
+  **98 tests Vitest** et build Next.js.
+- PostgreSQL local natif isolé : **3 tests réussis**, avec plusieurs connexions,
+  sur les éditions périmées, les courses cochées et la même création simultanée.
+  Le serveur temporaire a été arrêté après les tests.
+- `npm run test:e2e -- --list` : **4 scénarios**, déclinés sur Chrome et WebKit
+  mobile, soit **8 entrées**. Le listing ne prouve pas leur réussite.
+- Playwright avec Supabase n'a pas été exécuté : aucun compte isolé n'est configuré
+  dans l'environnement disponible. Aucun compte du foyer n'a été utilisé.
+- Aucun déploiement ni SQL distant effectué. La transition documentée doit être
+  validée sur un environnement Supabase isolé avant une livraison autorisée.
