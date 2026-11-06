@@ -21,6 +21,9 @@ tests conservent néanmoins l'isolation entre comptes distincts.
 
 Les clés étrangères composées avec `owner_id` interdisent les liens entre comptes.
 `to_taste` exige une quantité NULL ; les autres unités exigent une quantité positive.
+Les contraintes d’unité de `recipe_ingredients` et `shopping_items` autorisent
+`cup`, comme les autres unités du contrat métier. La cup reste une mesure
+distincte : aucune conversion vers des grammes ou des millilitres n’est stockée.
 Le nom normalisé du catalogue ignore casse et espaces répétés, sans fusionner les
 synonymes. La suppression d'une recette retire ses sélections, mais ne modifie pas
 l'instantané de courses déjà généré.
@@ -134,3 +137,13 @@ le SQL pendant que l'ancienne version est utilisée.
    les données pour contourner l'incompatibilité.
 
 Aucune migration distante ni livraison n'est implicite dans les tests locaux.
+
+## Ajout de l’unité cup
+
+La migration `20261106204155_add_cup_unit.sql` élargit uniquement les deux contraintes d’unité,
+sans modifier les recettes existantes, les RPC ou leurs droits. L’appliquer
+avant de mettre en ligne la version applicative qui propose cette unité.
+N’enregistrer de cups qu’une fois cette version disponible : une ancienne
+version de l’application ne sait pas lire cette unité. Un retour à cette
+ancienne version demande donc de traiter les recettes et instantanés contenant
+déjà des cups.

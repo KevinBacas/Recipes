@@ -121,7 +121,7 @@ function SelectedDish({
               }
             }}
           />
-          <span>personnes</span>
+          <span>portion{draft.value !== "1" ? "s" : ""}</span>
         </label>
         <span className="portion-status" role="status" aria-live="polite">
           {draft.status === "saved" ? (
@@ -202,11 +202,13 @@ export function PreparationView({
       };
     return generateList(activeListId);
   };
-  const addRecipe = (recipeId: string) => {
+  const addRecipe = (recipe: RecipeSummary) => {
     setError("");
     startTransition(async () => {
       try {
-        const result = await trackOperation(() => saveSelection({ recipeId, servings: 2 }));
+        const result = await trackOperation(() =>
+          saveSelection({ recipeId: recipe.id, servings: recipe.servings }),
+        );
         if (!result.ok) setError(result.error);
       } catch {
         setError("Le plat n’a pas pu être ajouté. Réessayez.");
@@ -273,7 +275,7 @@ export function PreparationView({
                     className="button button-secondary small"
                     disabled={pending || pendingOperations > 0}
                     aria-label={`Ajouter ${recipe.title} aux plats`}
-                    onClick={() => addRecipe(recipe.id)}
+                    onClick={() => addRecipe(recipe)}
                   >
                     <Plus size={17} />
                     <span>Ajouter</span>

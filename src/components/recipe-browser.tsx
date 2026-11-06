@@ -83,7 +83,7 @@ export function RecipeBrowser({ recipes }: { recipes: Recipe[] }) {
                 )}
                 <span className="portion-badge">
                   <Users size={13} />
-                  {recipe.servings} pers.
+                  {recipe.servings} portion{recipe.servings !== 1 ? "s" : ""}
                 </span>
               </div>
               <div className="recipe-card-body">

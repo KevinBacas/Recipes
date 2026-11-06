@@ -28,7 +28,8 @@ export function RecipeDetail({ recipe }: { recipe: Recipe }) {
           <p className="eyebrow">DANS NOTRE CARNET</p>
           <h1>{recipe.title}</h1>
           <p>
-            {recipe.ingredients.length} ingrédients · recette pour {recipe.servings} personnes
+            {recipe.ingredients.length} ingrédients · recette pour {recipe.servings} portion
+            {recipe.servings !== 1 ? "s" : ""}
           </p>
         </div>
         <Link className="button button-secondary" href={`/recettes/${recipe.id}/modifier`}>
@@ -56,7 +57,7 @@ export function RecipeDetail({ recipe }: { recipe: Recipe }) {
             <Users size={18} />
             <span>Pour</span>
             <input
-              aria-label="Nombre de personnes"
+              aria-label="Nombre de portions"
               type="number"
               min={SERVINGS_MIN}
               max={SERVINGS_MAX}
@@ -68,7 +69,7 @@ export function RecipeDetail({ recipe }: { recipe: Recipe }) {
                 setAdded(false);
               }}
             />
-            <span>personnes</span>
+            <span>portion{count !== 1 ? "s" : ""}</span>
           </label>
           <ul className="detail-ingredients">
             {recipe.ingredients.map((ingredient, i) => (

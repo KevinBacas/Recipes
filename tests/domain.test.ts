@@ -32,10 +32,20 @@ describe("courses", () => {
     expect(
       aggregateShopping([dish([line(1, "l"), line(25, "cl"), line(50, "ml")])])[0],
     ).toMatchObject({ unit: "ml", quantity: "1300" }));
-  it("garde les masses, volumes et cuillères séparés", () =>
+  it("garde les cups, masses, volumes et cuillères séparés", () =>
     expect(
-      aggregateShopping([dish([line(100, "g"), line(100, "ml"), line(1, "tbsp"), line(1, "tsp")])]),
-    ).toHaveLength(4));
+      aggregateShopping([
+        dish([line(2, "cup"), line(100, "g"), line(100, "ml"), line(1, "tbsp"), line(1, "tsp")]),
+      ]),
+    ).toHaveLength(5));
+  it("adapte et additionne les cups selon les portions produites", () => {
+    const result = aggregateShopping([
+      dish([line(2, "cup")], 32, 16),
+      dish([line(1, "cup")], 8, 4),
+    ]);
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({ unit: "cup", quantity: "1.5" });
+  });
   it("ne confond pas deux ingrédients au nom identique", () =>
     expect(
       aggregateShopping([
@@ -78,6 +88,7 @@ describe("saisie et affichage", () => {
   it("affiche une quantité lisible et son unité", () => {
     expect(formatAmount(1500, "g")).toBe("1,5 kg");
     expect(formatAmount(1000, "ml")).toBe("1 l");
+    expect(formatAmount(1.5, "cup")).toBe("1,5 cup(s)");
     expect(formatAmount(null, "to_taste")).toBe("au goût");
   });
   it("ne présente pas un petit besoin comme zéro", () =>
@@ -90,6 +101,25 @@ describe("saisie et affichage", () => {
   };
   it("valide une recette avec une quantité française", () =>
     expect(recipeSchema.parse(input).ingredients[0].quantity).toBe(0.5));
+  it("accepte une quantité de cups sans la convertir", () => {
+    expect(
+      recipeSchema.parse({
+        ...input,
+        ingredients: [{ ...input.ingredients[0], unit: "cup", quantity: "1,5" }],
+      }).ingredients[0],
+    ).toMatchObject({ unit: "cup", quantity: 1.5 });
+  });
+  it.each([null, "", 0, -1])(
+    "refuse une quantité de cups absente ou non positive : %s",
+    (quantity) => {
+      expect(
+        recipeSchema.safeParse({
+          ...input,
+          ingredients: [{ ...input.ingredients[0], unit: "cup", quantity }],
+        }).success,
+      ).toBe(false);
+    },
+  );
   it("exige une quantité sauf au goût", () =>
     expect(
       recipeSchema.safeParse({ ...input, ingredients: [{ ...input.ingredients[0], quantity: "" }] })

@@ -88,6 +88,43 @@ async function createRecipe(
   return new URL(page.url()).pathname;
 }
 
+test("les cups restent distinctes des grammes et les portions comptent les pièces produites", async ({
+  page,
+}) => {
+  await login(page);
+  await createRecipe(page, "Cookies en cups", "2", "cup", "100", "ml", 32);
+  await expect(
+    page.getByText("3 ingrédients · recette pour 32 portions", { exact: true }),
+  ).toBeVisible();
+  await page.getByLabel("Nombre de portions", { exact: true }).fill("16");
+  await expect(page.getByText("1 cup(s)", { exact: true })).toBeVisible();
+  await navigate(page, "Préparer");
+  await page
+    .getByRole("button", { name: "Ajouter Cookies en cups aux plats", exact: true })
+    .click();
+  const cookiePortions = page.getByLabel("Portions pour Cookies en cups", { exact: true });
+  await expect(cookiePortions).toHaveValue("32");
+  await cookiePortions.fill("16");
+  await cookiePortions.blur();
+  await expect(page.locator(".selected-dish").getByRole("status")).toHaveText("Enregistré");
+
+  await createRecipe(page, "Farine pesée", "100", "g", "50", "ml", 1);
+  await expect(
+    page.getByText("3 ingrédients · recette pour 1 portion", { exact: true }),
+  ).toBeVisible();
+  await navigate(page, "Préparer");
+  await page.getByRole("button", { name: "Ajouter Farine pesée aux plats", exact: true }).click();
+  await expect(page.getByLabel("Portions pour Farine pesée", { exact: true })).toHaveValue("1");
+  await expect(page.getByLabel("Portions pour Cookies en cups", { exact: true })).toHaveValue("16");
+  await page.getByRole("button", { name: "Générer les courses", exact: true }).click();
+  if (await page.getByRole("dialog").isVisible())
+    await page.getByRole("button", { name: "Générer la nouvelle liste", exact: true }).click();
+  await expect(page).toHaveURL(/\/courses$/);
+  await expect(page.getByRole("checkbox", { name: "Farine, 1 cup(s)", exact: true })).toBeVisible();
+  await expect(page.getByRole("checkbox", { name: "Farine, 100 g", exact: true })).toBeVisible();
+  await expect(page.getByRole("checkbox", { name: "Lait, 100 ml", exact: true })).toBeVisible();
+});
+
 test("recettes → portions → courses partagées, conservation et remplacement", async ({
   page,
   browser,
@@ -104,7 +141,7 @@ test("recettes → portions → courses partagées, conservation et remplacement
         .evaluate((image) => (image as HTMLImageElement).naturalWidth),
     )
     .toBeGreaterThan(0);
-  await page.getByLabel("Nombre de personnes", { exact: true }).fill("2");
+  await page.getByLabel("Nombre de portions", { exact: true }).fill("2");
   await page.getByRole("button", { name: "Prévoir ce plat", exact: true }).click();
   await expect(page.getByRole("button", { name: "Plat ajouté", exact: true })).toBeVisible();
   await createRecipe(page, "Gâteau du dimanche", "0,25", "kg", "250", "ml", 2);

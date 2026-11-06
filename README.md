@@ -77,12 +77,12 @@ Le build utilise Webpack pour fonctionner aussi dans les environnements où les 
 
 ## Fonctionnement
 
-- Une recette conserve ses portions d’origine. L’affichage et chaque occurrence d’un plat peuvent utiliser un autre nombre de portions.
+- Une recette conserve ses portions d’origine. Une portion peut être une part, une pièce (par exemple un cookie) ou une préparation entière : elle ne représente pas nécessairement une personne. L’ajout depuis **Préparer** reprend ce nombre de portions par défaut ; l’affichage et chaque occurrence d’un plat peuvent ensuite utiliser un autre nombre de portions.
 - Sur **Préparer**, les portions s’enregistrent automatiquement après une courte pause de saisie, ou dès que le champ perd le focus. La génération attend les sauvegardes en cours. Une valeur invalide ou un enregistrement échoué bloque la génération et peut être corrigé ou réessayé.
 - La génération attend les ajouts et retraits de plats déjà lancés. Lorsqu’une recette est modifiée sur l’autre appareil, un formulaire local déjà modifié signale le conflit et demande de charger la dernière version ; la sauvegarde vérifie aussi la révision en base.
 - Le catalogue identifie les ingrédients par leur nom normalisé (casse et espaces). Le choix d’un ingrédient existant évite les doublons ; les synonymes et singuliers/pluriels ne sont pas fusionnés automatiquement.
 - Le rayon est partagé par toutes les recettes utilisant cet ingrédient. Un ingrédient déjà au catalogue conserve son rayon ; pour un nouveau nom, une suggestion peut être chargée à la perte de focus. Elle reste modifiable et n’est enregistrée qu’avec la recette. En l’absence de clé ou si le classement échoue, la saisie et l’enregistrement manuels restent disponibles.
-- Grammes et kilogrammes se regroupent ; millilitres, centilitres et litres aussi. Masses, volumes, pièces, cuillères et pincées restent distincts. Les mentions « au goût » ne sont pas chiffrées.
+- Grammes et kilogrammes se regroupent ; millilitres, centilitres et litres aussi. Les cups d’un même ingrédient s’additionnent et restent affichées en cups, sans conversion automatique en poids, millilitres ou cuillères. Masses, volumes, cups, pièces, cuillères et pincées restent distincts. Les mentions « au goût » ne sont pas chiffrées.
 - Les calculs utilisent une arithmétique décimale ; l’affichage arrondit à trois décimales. L’application calcule les besoins, pas le nombre de paquets à acheter.
 - La génération crée un instantané unique, indépendant des modifications ou suppressions ultérieures des recettes. Remplacer la liste nécessite une confirmation et réinitialise les cases cochées.
 - Les mises à jour des cases sont idempotentes et synchronisées. Le dernier état enregistré prévaut. Les clics sur une ancienne liste sont rejetés.

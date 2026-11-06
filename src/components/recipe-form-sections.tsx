@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { useId } from "react";
 import { ImagePlus, Plus, Trash2, X } from "lucide-react";
 import {
   AISLES,
@@ -33,13 +34,14 @@ export function RecipeBasicsSection({
   onPhotoChange: (file: File) => void;
   onPhotoRemove: () => void;
 }) {
+  const servingsHintId = useId();
   return (
     <section className="form-section">
       <div className="section-heading">
         <span className="section-number">01</span>
         <div>
           <h2>Le plat</h2>
-          <p>Un nom et le nombre de personnes de la recette d’origine.</p>
+          <p>Un nom et le nombre de portions de la recette d’origine.</p>
         </div>
       </div>
       <div className="basics-grid">
@@ -60,6 +62,7 @@ export function RecipeBasicsSection({
               <input
                 required
                 type="number"
+                aria-describedby={servingsHintId}
                 min={SERVINGS_MIN}
                 max={SERVINGS_MAX}
                 step="1"
@@ -67,9 +70,12 @@ export function RecipeBasicsSection({
                 value={servings}
                 onChange={(event) => onServingsChange(event.target.value)}
               />
-              <span>personnes</span>
+              <span>portion{servings !== "1" ? "s" : ""}</span>
             </div>
           </label>
+          <p className="field-hint" id={servingsHintId}>
+            Une portion peut correspondre à une part, une pièce ou une préparation entière.
+          </p>
         </div>
 
         <div className="photo-field">

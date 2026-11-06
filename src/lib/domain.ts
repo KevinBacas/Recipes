@@ -21,6 +21,7 @@ export const UNITS = [
   { id: "ml", label: "ml" },
   { id: "cl", label: "cl" },
   { id: "l", label: "l" },
+  { id: "cup", label: "cup(s)" },
   { id: "piece", label: "pièce(s)" },
   { id: "tbsp", label: "c. à soupe" },
   { id: "tsp", label: "c. à café" },

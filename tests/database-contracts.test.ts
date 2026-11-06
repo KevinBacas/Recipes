@@ -16,6 +16,7 @@ import {
   normalizeIngredientName,
   SERVINGS_MIN,
   SERVINGS_MAX,
+  UNITS,
 } from "@/lib/domain";
 import { ACCOUNT, OTHER_ACCOUNT, createDatabase, resetAccount, rpc } from "./helpers/database";
 let db: PGlite;
@@ -106,6 +107,130 @@ describe("contrats SQL ↔ décodeurs TypeScript", () => {
       recipeRecordSchema.parse(await rpc(db, ACCOUNT, "get_recipe", { p_id: a.id })).ingredients[0]
         .aisle,
     ).toBe("other");
+  });
+  it("conserve les cups entre recette, préparation et courses sans conversion", async () => {
+    const saved = saveRecipeResultSchema.parse(
+      await rpc(db, ACCOUNT, "save_recipe", {
+        ...args,
+        p_title: "32 cookies",
+        p_servings: 32,
+        p_ingredients: [
+          { ...args.p_ingredients[0], quantity: 2, unit: "cup" },
+          { ...args.p_ingredients[0], quantity: 100, unit: "g" },
+          { ...args.p_ingredients[0], quantity: 100, unit: "ml" },
+          { ...args.p_ingredients[0], quantity: 1, unit: "tbsp" },
+          { ...args.p_ingredients[0], quantity: 1, unit: "tsp" },
+        ],
+      }),
+    );
+    const recipe = recipeRecordSchema.parse(
+      await rpc(db, ACCOUNT, "get_recipe", { p_id: saved.id }),
+    );
+    expect(recipe.servings).toBe(32);
+    expect(recipe.ingredients[0]).toMatchObject({ quantity: 2, unit: "cup" });
+    await rpc(db, ACCOUNT, "save_selection", { p_id: null, p_recipe_id: saved.id, p_servings: 16 });
+    const prep = preparationSchema.parse(await rpc(db, ACCOUNT, "get_preparation"));
+    await rpc(db, ACCOUNT, "replace_shopping_list", {
+      p_revision: prep.revision,
+      p_expected_list_id: null,
+      p_items: aggregateShopping(prep.selections),
+    });
+    const list = shoppingListSchema.parse(await rpc(db, ACCOUNT, "get_shopping_list"));
+    expect(list.items).toHaveLength(5);
+    expect(list.items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ quantity: 1, unit: "cup" }),
+        expect.objectContaining({ quantity: 50, unit: "g" }),
+        expect.objectContaining({ quantity: 50, unit: "ml" }),
+        expect.objectContaining({ quantity: 0.5, unit: "tbsp" }),
+        expect.objectContaining({ quantity: 0.5, unit: "tsp" }),
+      ]),
+    );
+  });
+  it("accepte toutes les unités dans les deux contraintes après leur élargissement", async () => {
+    const saved = saveRecipeResultSchema.parse(
+      await rpc(db, ACCOUNT, "save_recipe", {
+        ...args,
+        p_ingredients: UNITS.map(({ id }) => ({
+          name: `Ingrédient ${id}`,
+          aisle: "pantry",
+          unit: id,
+          quantity: id === "to_taste" ? null : 1,
+        })),
+      }),
+    );
+    const recipe = recipeRecordSchema.parse(
+      await rpc(db, ACCOUNT, "get_recipe", { p_id: saved.id }),
+    );
+    expect(recipe.ingredients.map((ingredient) => ingredient.unit)).toEqual(
+      UNITS.map(({ id }) => id),
+    );
+    await rpc(db, ACCOUNT, "save_selection", { p_id: null, p_recipe_id: saved.id, p_servings: 4 });
+    const prep = preparationSchema.parse(await rpc(db, ACCOUNT, "get_preparation"));
+    await rpc(db, ACCOUNT, "replace_shopping_list", {
+      p_revision: prep.revision,
+      p_expected_list_id: null,
+      // Exercise the SQL whitelist directly, including kg/l/cl normally normalized by the action.
+      p_items: recipe.ingredients,
+    });
+    expect(
+      shoppingListSchema
+        .parse(await rpc(db, ACCOUNT, "get_shopping_list"))
+        .items.map((item) => item.unit)
+        .sort(),
+    ).toEqual(UNITS.map(({ id }) => id).sort());
+  });
+  it.each([null, 0, -1])(
+    "refuse la quantité invalide %s pour une cup dans les deux RPC",
+    async (quantity) => {
+      await expect(
+        rpc(db, ACCOUNT, "save_recipe", {
+          ...args,
+          p_ingredients: [{ ...args.p_ingredients[0], unit: "cup", quantity }],
+        }),
+      ).rejects.toThrow();
+      const saved = saveRecipeResultSchema.parse(
+        await rpc(db, ACCOUNT, "save_recipe", {
+          ...args,
+          p_ingredients: [{ ...args.p_ingredients[0], unit: "cup", quantity: 1 }],
+        }),
+      );
+      await rpc(db, ACCOUNT, "save_selection", {
+        p_id: null,
+        p_recipe_id: saved.id,
+        p_servings: 4,
+      });
+      const prep = preparationSchema.parse(await rpc(db, ACCOUNT, "get_preparation"));
+      const items = aggregateShopping(prep.selections);
+      await expect(
+        rpc(db, ACCOUNT, "replace_shopping_list", {
+          p_revision: prep.revision,
+          p_expected_list_id: null,
+          p_items: [{ ...items[0], quantity }],
+        }),
+      ).rejects.toThrow();
+      expect(await rpc(db, ACCOUNT, "get_shopping_list")).toBeNull();
+    },
+  );
+  it("continue de refuser une unité inconnue dans les deux RPC", async () => {
+    await expect(
+      rpc(db, ACCOUNT, "save_recipe", {
+        ...args,
+        p_ingredients: [{ ...args.p_ingredients[0], unit: "cups", quantity: 1 }],
+      }),
+    ).rejects.toThrow();
+    const saved = saveRecipeResultSchema.parse(await rpc(db, ACCOUNT, "save_recipe", args));
+    await rpc(db, ACCOUNT, "save_selection", { p_id: null, p_recipe_id: saved.id, p_servings: 4 });
+    const prep = preparationSchema.parse(await rpc(db, ACCOUNT, "get_preparation"));
+    const items = aggregateShopping(prep.selections);
+    await expect(
+      rpc(db, ACCOUNT, "replace_shopping_list", {
+        p_revision: prep.revision,
+        p_expected_list_id: null,
+        p_items: [{ ...items[0], unit: "cups" }],
+      }),
+    ).rejects.toThrow();
+    expect(await rpc(db, ACCOUNT, "get_shopping_list")).toBeNull();
   });
   it.each([SERVINGS_MIN - 1, SERVINGS_MIN, SERVINGS_MAX, SERVINGS_MAX + 1])(
     "valide les mêmes bornes de portions en TS et SQL : %i",
